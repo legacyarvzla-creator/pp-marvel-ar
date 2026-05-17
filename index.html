@@ -35,41 +35,9 @@
         </a-entity>
     </a-scene>
 
+    <!-- AQUÍ QUEDA TU LÓGICA DE PANTALLA COMPLETA TOTALMENTE DISFRAZADA -->
     <script>
-        const btn = document.querySelector("#playButton");
-        const video = document.querySelector("#miVideo");
-
-        btn.addEventListener('click', function() {
-            // Quitamos el botón
-            document.querySelector("#ui").style.display = "none";
-            
-            // Iniciamos reproducción
-            video.play();
-
-            // TRUCO FINAL PARA PANTALLA COMPLETA
-            // Si es iPhone (Safari) usamos webkitEnterFullscreen
-            if (video.webkitEnterFullscreen) {
-                video.webkitEnterFullscreen();
-            } 
-            // Si es Android usamos el estándar
-            else if (video.requestFullscreen) {
-                video.requestFullscreen();
-            } else if (video.webkitRequestFullscreen) {
-                video.webkitRequestFullscreen();
-            }
-        });
-
-        // Detectar cuando el video termina o el usuario cierra la pantalla completa
-        const cerrarVideo = () => {
-            video.pause();
-            // Opcional: recargar la página para volver a escanear
-            // window.location.reload(); 
-        };
-
-        video.addEventListener('webkitendfullscreen', cerrarVideo);
-        video.addEventListener('fullscreenchange', () => {
-            if (!document.fullscreenElement) cerrarVideo();
-        });
+        const _0x19f2=["querySelector","#playButton","#miVideo","#ui","style","display","none","play","webkitEnterFullscreen","requestFullscreen","webkitRequestFullscreen","addEventListener","webkitendfullscreen","pause","fullscreenchange","fullscreenElement"];const btn=document[_0x19f2[0]](_0x19f2[1]);const video=document[_0x19f2[0]](_0x19f2[2]);btn[_0x19f2[11]]("click",function(){document[_0x19f2[0]](_0x19f2[3])[_0x19f2[4]][_0x19f2[5]]=_0x19f2[6];video[_0x19f2[7]]();if(video[_0x19f2[8]]){video[_0x19f2[8]]()}else {if(video[_0x19f2[9]]){video[_0x19f2[9]]()}else {if(video[_0x19f2[10]]){video[_0x19f2[10]]()}}}});const cerrarVideo=()=>{video[_0x19f2[13]]()};video[_0x19f2[11]](_0x19f2[12],cerrarVideo);video[_0x19f2[11]](_0x19f2[14],()=>{if(!document[_0x19f2[15]]){cerrarVideo()}});
     </script>
 </body>
 </html>
