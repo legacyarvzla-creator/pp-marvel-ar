@@ -5,41 +5,174 @@
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: black; }
+        body { margin: 0; overflow: hidden; background-color: black; font-family: sans-serif; }
+        
+        /* Contenedor principal de la interfaz de usuario */
         #ui { 
             position: absolute; z-index: 9999; bottom: 30px; left: 50%; 
-            transform: translateX(-50%); width: 100%; text-align: center;
+            transform: translateX(-50%); width: 90%; max-width: 400px;
+            display: flex; flex-direction: column; gap: 15px; align-items: center;
         }
-        button { 
-            padding: 20px 40px; border-radius: 50px; border: none; 
-            background: #e91e63; color: white; font-size: 18px; 
+
+        /* Botón principal de video */
+        .btn-principal { 
+            padding: 15px 30px; border-radius: 50px; border: none; 
+            background: #e91e63; color: white; font-size: 16px; 
             font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            cursor: pointer;
+            cursor: pointer; width: 100%; transition: background 0.3s;
         }
-        /* Esto asegura que el video oculto no interfiera pero esté listo */
+        .btn-principal:active { background: #c2185b; }
+
+        /* Contenedor para botones de utilidades (Grabar y Linterna) */
+        .utilidades-bar {
+            display: flex; gap: 20px; justify-content: center; width: 100%;
+        }
+
+        /* Estilo de los botones circulares */
+        .btn-circular {
+            width: 60px; height: 60px; border-radius: 50%; border: none;
+            background: rgba(255, 255, 255, 0.2); color: white;
+            font-size: 24px; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer;
+            backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+            transition: all 0.3s;
+        }
+        .btn-circular:active { transform: scale(0.9); }
+        .btn-circular.activo { background: #4caf50; } /* Para cuando esté grabando */
+
+        /* Ocultar el video de fondo para que no estorbe */
         #miVideo { position: absolute; width: 1px; height: 1px; opacity: 0; }
     </style>
 </head>
 <body>
+
     <div id="ui">
-        <button id="playButton">VER VIDEO EN PANTALLA COMPLETA</button>
+        <!-- Botones secundarios de utilidades -->
+        <div class="utilidades-bar">
+            <!-- Botón Linterna (Bombillo) -->
+            <button id="torchButton" class="btn-circular" title="Linterna">💡</button>
+            <!-- Botón Grabar Pantalla -->
+            <button id="recordButton" class="btn-circular" title="Grabar">🔴</button>
+        </div>
+        <!-- Botón Principal -->
+        <button id="playButton" class="btn-principal">VER VIDEO EN PANTALLA COMPLETA</button>
     </div>
 
-    <video id="miVideo" src="./video.mp4" preload="auto" crossorigin="anonymous" webkit-playsinline playsinline></video>
+    <!-- Video preparado para la Realidad Aumentada -->
+    <video id="miVideo" src="./video.mp4" preload="auto" crossorigin="anonymous" webkit-playsinline playsinline loop></video>
 
-    <!-- Dejamos el autoStart: true visible aquí arriba para que la cámara en vivo nunca falle -->
-    <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: true;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+    <!-- Escena AR configurada para la franela -->
+    <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; filterMinCF:0.001; filterBeta: 0.01;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
         
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-controls>
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-        <a-entity mindar-image-target="targetIndex: 0">
-            <a-video src="#miVideo" width="0.6" height="1" position="0 0 0" opacity="1"></a-video>
+        <!-- Target 0: Tu franela personalizada -->
+        <a-entity id="franelaTarget" mindar-image-target="targetIndex: 0">
+            <!-- El video se proyectará aquí encima cuando detecte la franela -->
+            <!-- Ajusté las proporciones (width/height) para que encaje estéticamente en el pecho -->
+            <a-video src="#miVideo" width="1" height="1" position="0 0 0" opacity="1"></a-video>
         </a-entity>
     </a-scene>
 
-    <!-- TU LÓGICA PRIVADA BLINDADA CORREGIDA -->
     <script>
+        // Ofuscación y lógica original para el botón de pantalla completa
         const _0x19f2=["querySelector","#playButton","#miVideo","#ui","style","display","none","play","webkitEnterFullscreen","requestFullscreen","webkitRequestFullscreen","addEventListener","webkitendfullscreen","pause","fullscreenchange","fullscreenElement"];const btn=document[_0x19f2[0]](_0x19f2[1]);const video=document[_0x19f2[0]](_0x19f2[2]);btn[_0x19f2[11]]("click",function(){document[_0x19f2[0]](_0x19f2[3])[_0x19f2[4]][_0x19f2[5]]=_0x19f2[6];video[_0x19f2[7]]();if(video[_0x19f2[8]]){video[_0x19f2[8]]()}else {if(video[_0x19f2[9]]){video[_0x19f2[9]]()}else {if(video[_0x19f2[10]]){video[_0x19f2[10]]()}}}});const cerrarVideo=()=>{video[_0x19f2[13]]()};video[_0x19f2[11]](_0x19f2[12],cerrarVideo);video[_0x19f2[11]](_0x19f2[14],()=>{if(!document[_0x19f2[15]]){cerrarVideo()}});
+
+        // Lógica interactiva para reproducir sobre la Franela automáticamente al detectarla
+        const franelaTarget = document.querySelector('#franelaTarget');
+        franelaTarget.addEventListener("targetFound", event => {
+            console.log("Franela detectada: Reproduciendo video...");
+            video.play().catch(err => console.log("Esperando interacción del usuario para audio"));
+        });
+
+        franelaTarget.addEventListener("targetLost", event => {
+            console.log("Franela perdida: Pausando video...");
+            video.pause();
+        });
+
+
+        // ==========================================
+        // LÓGICA DEL BOTÓN LINTERNA (BOMBILLO)
+        // ==========================================
+        const torchButton = document.querySelector('#torchButton');
+        let linternaActiva = false;
+
+        torchButton.addEventListener('click', async () => {
+            try {
+                // Buscamos el track de video que Mind-AR está usando de la cámara trasera
+                const sceneEl = document.querySelector('a-scene');
+                const videoTrack = sceneEl.systems["mindar-image-system"].video.srcObject.getVideoTracks()[0];
+                
+                if (videoTrack) {
+                    const capabilities = videoTrack.getCapabilities();
+                    // Verificamos si el dispositivo soporta Linterna/Flash
+                    if (capabilities.torch) {
+                        linternaActiva = !linternaActiva;
+                        await videoTrack.applyConstraints({
+                            advanced: [{ torch: linternaActiva }]
+                        });
+                        torchButton.innerText = linternaActiva ? "💡" : "⚫";
+                        torchButton.style.background = linternaActiva ? "rgba(255,235,59,0.6)" : "rgba(255, 255, 255, 0.2)";
+                    } else {
+                        alert("La linterna no es compatible con la cámara en este dispositivo.");
+                    }
+                }
+            } catch (error) {
+                console.error("Error con la linterna: ", error);
+                alert("No se pudo acceder a la linterna. Asegúrate de estar en un móvil.");
+            }
+        });
+
+
+        // ==========================================
+        // LÓGICA DEL BOTÓN GRABAR PANTALLA (WEB)
+        // ==========================================
+        const recordButton = document.querySelector('#recordButton');
+        let mediaRecorder;
+        let fragmentosVideo = [];
+        let grabando = false;
+
+        recordButton.addEventListener('click', async () => {
+            if (!grabando) {
+                // INICIAR GRABACIÓN
+                try {
+                    // Captura el stream del canvas de A-Frame (los gráficos de AR)
+                    const canvasStream = document.querySelector('canvas').captureStream(30); // 30 FPS
+                    
+                    // Configuramos el grabador
+                    mediaRecorder = new MediaRecorder(canvasStream, { mimeType: 'video/webm;codecs=vp9' });
+                    fragmentosVideo = [];
+
+                    mediaRecorder.ondataavailable = (e) => {
+                        if (e.data.size > 0) fragmentosVideo.push(e.data);
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        // Al detenerse, guarda el archivo y lo descarga automáticamente
+                        const blob = new Blob(fragmentosVideo, { type: 'video/webm' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'mi_experiencia_AR.webm';
+                        a.click();
+                    };
+
+                    mediaRecorder.start();
+                    grabando = true;
+                    recordButton.innerText = "⏹️";
+                    recordButton.classList.add('activo');
+                } catch (err) {
+                    console.error("Error al grabar: ", err);
+                    alert("Tu navegador no soporta la grabación directa de canvas.");
+                }
+            } else {
+                // DETENER GRABACIÓN
+                mediaRecorder.stop();
+                grabando = false;
+                recordButton.innerText = "🔴";
+                recordButton.classList.remove('activo');
+            }
+        });
     </script>
 </body>
 </html>
