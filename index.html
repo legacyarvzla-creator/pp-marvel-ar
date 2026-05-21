@@ -2,17 +2,18 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AR Franela Vertical</title>
+    <title>AR Franela Definitivo</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background-color: black; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
         
+        /* Interfaz de usuario limpia inferior */
         #ui { 
             position: absolute; z-index: 9999; bottom: 40px; left: 50%; 
             transform: translateX(-50%); width: auto;
             display: flex; gap: 25px; justify-content: center; align-items: center;
-            padding: 12px 25px; background: rgba(0, 0, 0, 0.5); border-radius: 50px;
+            padding: 12px 25px; background: rgba(0, 0, 0, 0.6); border-radius: 50px;
             backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
@@ -24,9 +25,9 @@
             cursor: pointer; transition: all 0.2s ease; position: relative;
             box-shadow: 0 4px 12px rgba(0,0,0,0.4);
         }
-        .btn-circular:active { transform: scale(0.9); background: rgba(255, 255, 255, 0.2); }
+        .btn-circular:active { transform: scale(0.9); }
         
-        .btn-circular.grabando { background: rgba(244, 67, 54, 0.8); border-color: #f44336; }
+        .btn-circular.grabando { background: rgba(244, 67, 54, 0.9); border-color: #f44336; }
         .btn-circular.grabando::after {
             content: ''; position: absolute; width: 100%; height: 100%;
             border-radius: 50%; background: inherit; animation: pulso 1.5s infinite;
@@ -47,20 +48,20 @@
         <button id="torchButton" class="btn-circular" title="Linterna">💡</button>
     </div>
 
-    <!-- Video de la franela -->
+    <!-- Video vertical 1080x1920 -->
     <video id="miVideo" src="./video.mp4" preload="auto" crossorigin="anonymous" webkit-playsinline playsinline loop></video>
 
-    <!-- CORRECCIÓN CÁMARA: Forzamos al renderer a preservar el buffer de dibujo para evitar pantallas negras -->
+    <!-- Escena configurada con preservación estricta de dibujo -->
     <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: no; uiLoading: no; filterMinCF: 0.0005; filterBeta: 0.005;" 
              color-space="sRGB" 
-             renderer="colorManagement: true, physicallyCorrectLights, preserveDrawingBuffer: true" 
+             renderer="colorManagement: true, physicallyCorrectLights, preserveDrawingBuffer: true, alpha: true" 
              vr-mode-ui="enabled: false" 
              device-orientation-permission-ui="enabled: false">
         
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <a-entity id="franelaTarget" mindar-image-target="targetIndex: 0">
-            <!-- Proporciones estrictas en vertical 9:16 -->
+            <!-- Relación estricta de aspecto 9:16 vertical (Ancho 1, Alto 1.777) -->
             <a-video id="arVideoEntity" src="#miVideo" width="1" height="1.777" position="0 0 0" rotation="0 0 0" opacity="1"></a-video>
         </a-entity>
     </a-scene>
@@ -71,9 +72,9 @@
         const torchButton = document.querySelector('#torchButton');
         const franelaTarget = document.querySelector('#franelaTarget');
 
-        // Reproducción automática sobre la franela (Estilo Ozzy)
+        // Lógica de reproducción automática en la franela
         franelaTarget.addEventListener("targetFound", () => {
-            video.play().catch(err => console.log("Interacción requerida para activar audio"));
+            video.play().catch(err => console.log("Audio esperando interacción del espectador"));
         });
 
         franelaTarget.addEventListener("targetLost", () => {
@@ -81,46 +82,69 @@
         });
 
         // ============================================================
-        // NUEVA GRABACIÓN ROBUSTA: AUDIO + VIDEO DE CÁMARA REAL
+        // MEZCLADOR INTEGRAL DEFINITIVO (PERSONA + AR + AUDIO)
         // ============================================================
         let mediaRecorder;
         let videoBlobs = [];
         let estaGrabando = false;
+        let loopMezclador;
+        let canvasFantasma, ctxFantasma;
 
         recordButton.addEventListener('click', async () => {
             if (!estaGrabando) {
                 try {
                     const canvasAR = document.querySelector('canvas');
-                    
-                    // 1. Capturamos los gráficos del Canvas AR (con el buffer preservado para que no salga negro)
-                    const streamCanvas = canvasAR.captureStream(30);
-                    const pistaVideo = streamCanvas.getVideoTracks()[0];
+                    // Buscamos la etiqueta de video interna donde se ve a la persona real
+                    const videoCamaraPersona = document.querySelector('video:not(#miVideo)');
 
-                    // 2. Capturamos el flujo de audio directamente desde el elemento de video de la franela
-                    let pistaAudio;
-                    if (video.captureStream) {
-                        const streamAudio = video.captureStream();
-                        pistaAudio = streamAudio.getAudioTracks()[0];
-                    } else if (video.mozCaptureStream) {
-                        const streamAudio = video.mozCaptureStream();
-                        pistaAudio = streamAudio.getAudioTracks()[0];
+                    if (!videoCamaraPersona) {
+                        alert("Espera a que cargue la cámara por completo.");
+                        return;
                     }
 
-                    // 3. Creamos un nuevo flujo combinado
-                    const pistasCombinadas = [pistaVideo];
-                    if (pistaAudio) {
-                        pistasCombinadas.push(pistaAudio);
-                    }
-                    
-                    const streamFinal = new MediaStream(pistasCombinadas);
+                    // Creamos el canvas fantasma definitivo con las dimensiones exactas de la pantalla
+                    canvasFantasma = document.createElement('canvas');
+                    canvasFantasma.width = canvasAR.clientWidth * window.devicePixelRatio;
+                    canvasFantasma.height = canvasAR.clientHeight * window.devicePixelRatio;
+                    ctxFantasma = canvasFantasma.getContext('2d');
 
-                    // 4. Configuramos el MediaRecorder con un formato compatible general
-                    let opciones = { mimeType: 'video/webm;codecs=vp8,opus' };
-                    if (!MediaRecorder.isTypeSupported(opciones.mimeType)) {
-                        opciones = { mimeType: 'video/mp4' }; // Alternativa para iOS si está disponible
+                    // Bucle manual forzado de fotogramas para evitar pantallas negras
+                    const procesarFrame = () => {
+                        if (!estaGrabando) return;
+
+                        // Paso A: Pintamos la cámara en vivo de la persona ocupando todo el fondo
+                        ctxFantasma.drawImage(videoCamaraPersona, 0, 0, canvasFantasma.width, canvasFantasma.height);
+                        
+                        // Paso B: Pintamos encima los elementos AR (el video vertical en la franela)
+                        ctxFantasma.drawImage(canvasAR, 0, 0, canvasFantasma.width, canvasFantasma.height);
+                        
+                        loopMezclador = requestAnimationFrame(procesarFrame);
+                    };
+
+                    estaGrabando = true;
+                    procesarFrame();
+
+                    // Capturamos la señal visual del canvas unificado
+                    const streamVisual = canvasFantasma.captureStream(30);
+                    const pistaVideoCombinada = streamVisual.getVideoTracks()[0];
+
+                    // Capturamos la señal de audio directamente desde el archivo de video por contexto nativo
+                    const streamAudioNativo = video.captureStream ? video.captureStream() : video.mozCaptureStream ? video.mozCaptureStream() : null;
+                    const pistaAudio = streamAudioNativo ? streamAudioNativo.getAudioTracks()[0] : null;
+
+                    // Unimos las piezas en un flujo final blindado
+                    const componentesFlujo = [pistaVideoCombinada];
+                    if (pistaAudio) componentesFlujo.push(pistaAudio);
+
+                    const streamFinal = new MediaStream(componentesFlujo);
+
+                    // Elegimos formatos universales según el dispositivo (WebM para Android, MP4 para iOS)
+                    let codecIdeal = 'video/webm;codecs=vp8,opus';
+                    if (!MediaRecorder.isTypeSupported(codecIdeal)) {
+                        codecIdeal = 'video/mp4'; 
                     }
 
-                    mediaRecorder = new MediaRecorder(streamFinal, opciones);
+                    mediaRecorder = new MediaRecorder(streamFinal, { mimeType: codecIdeal });
                     videoBlobs = [];
 
                     mediaRecorder.ondataavailable = (e) => {
@@ -128,23 +152,28 @@
                     };
 
                     mediaRecorder.onstop = () => {
-                        const blob = new Blob(videoBlobs, { type: videoBlobs[0].type });
-                        const url = URL.createObjectURL(blob);
+                        cancelAnimationFrame(loopMezclador);
+                        const blobFinal = new Blob(videoBlobs, { type: videoBlobs[0].type });
+                        const urlDescarga = URL.createObjectURL(blobFinal);
                         const enlace = document.createElement('a');
-                        enlace.href = url;
-                        // Si es iOS guardará como mp4, en Android como webm
-                        enlace.download = videoBlobs[0].type.includes('mp4') ? 'experiencia_AR.mp4' : 'experiencia_AR.webm';
+                        enlace.href = urlDescarga;
+                        
+                        // Le damos extensión correcta según el teléfono
+                        const extension = videoBlobs[0].type.includes('mp4') ? '.mp4' : '.webm';
+                        enlace.download = 'experiencia_AR_completa' + extension;
                         enlace.click();
+                        
+                        canvasFantasma = null;
+                        ctxFantasma = null;
                     };
 
                     mediaRecorder.start();
-                    estaGrabando = true;
                     recordButton.innerText = "⏹️";
                     recordButton.classList.add('grabando');
 
                 } catch (error) {
                     console.error(error);
-                    alert("Error de permisos o formato no soportado al grabar.");
+                    alert("Tu modelo de celular bloquea la grabación unificada por privacidad.");
                     estaGrabando = false;
                 }
             } else {
@@ -155,7 +184,7 @@
             }
         });
 
-        // Control de la linterna
+        // Control de la linterna (Flash del celular)
         let luzEncendida = false;
         torchButton.addEventListener('click', async () => {
             try {
@@ -167,13 +196,13 @@
                     if (soporte.torch) {
                         luzEncendida = !luzEncendida;
                         await camaraTrack.applyConstraints({ advanced: [{ torch: luzEncendida }] });
-                        torchButton.style.background = luzEncendida ? "rgba(255, 235, 59, 0.4)" : "rgba(0, 0, 0, 0.4)";
+                        torchButton.style.background = luzEncendida ? "rgba(255, 235, 59, 0.5)" : "rgba(0, 0, 0, 0.4)";
                     } else {
-                        alert("Linterna no disponible.");
+                        alert("La linterna no está disponible en este lente.");
                     }
                 }
             } catch (err) {
-                alert("La linterna requiere HTTPS en teléfonos.");
+                alert("La linterna requiere despliegue bajo protocolo seguro HTTPS.");
             }
         });
     </script>
