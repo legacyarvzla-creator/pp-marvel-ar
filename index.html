@@ -2,140 +2,186 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AR Franela Vertical</title>
+    <title>AR Franela Interactiva</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background-color: black; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
         
-        /* UI principal simplificada y transparente */
+        /* Contenedor flotante inferior para los botones de utilidades */
         #ui { 
-            position: absolute; z-index: 9999; bottom: 30px; left: 50%; 
-            transform: translateX(-50%); width: 85%; max-width: 380px;
-            display: flex; flex-direction: column; gap: 15px; align-items: center;
-        }
-
-        /* Botón de video principal con mejor diseño */
-        .btn-principal { 
-            padding: 16px 30px; border-radius: 50px; border: none; 
-            background: linear-gradient(135deg, #ff4081 0%, #e91e63 100%);
-            color: white; font-size: 16px; font-weight: bold; 
-            box-shadow: 0 5px 20px rgba(233, 30, 99, 0.4);
-            cursor: pointer; width: 100%; transition: all 0.3s ease;
-        }
-        .btn-principal:active { transform: scale(0.97); box-shadow: 0 2px 10px rgba(233, 30, 99, 0.3); }
-
-        /* Barra de herramientas flotante y translúcida */
-        .utilidades-bar {
-            display: flex; gap: 15px; justify-content: center; width: 100%;
-            padding: 10px; background: rgba(0, 0, 0, 0.5); border-radius: 50px;
+            position: absolute; z-index: 9999; bottom: 40px; left: 50%; 
+            transform: translateX(-50%); width: auto;
+            display: flex; gap: 25px; justify-content: center; align-items: center;
+            padding: 12px 25px; background: rgba(0, 0, 0, 0.4); border-radius: 50px;
             backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
         }
 
-        /* Estilo de los botones circulares mejorado */
+        /* Estilo de los botones circulares (Grabar y Linterna) */
         .btn-circular {
-            width: 55px; height: 55px; border-radius: 50%; border: none;
-            background: rgba(255, 255, 255, 0.15); color: white;
-            font-size: 22px; display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: all 0.3s ease;
-            position: relative;
+            width: 60px; height: 60px; border-radius: 50%; border: 2px solid white;
+            background: rgba(0, 0, 0, 0.3); color: white;
+            font-size: 24px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.2s ease; position: relative;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
-        .btn-circular:active { transform: scale(0.9); background: rgba(255, 255, 255, 0.25); }
-        .btn-circular.activo { background: rgba(76, 175, 80, 0.8); box-shadow: 0 0 15px rgba(76, 175, 80, 0.5); }
+        .btn-circular:active { transform: scale(0.9); background: rgba(255, 255, 255, 0.2); }
         
-        /* Efecto de pulso para cuando está grabando */
-        .btn-circular.activo::after {
+        /* Estado cuando está grabando */
+        .btn-circular.grabando { background: rgba(244, 67, 54, 0.8); border-color: #f44336; }
+        .btn-circular.grabando::after {
             content: ''; position: absolute; width: 100%; height: 100%;
-            border-radius: 50%; background: inherit; animation: pulse 1.5s infinite;
+            border-radius: 50%; background: inherit; animation: pulsoGrabacion 1.5s infinite;
         }
-        @keyframes pulse {
+        @keyframes pulsoGrabacion {
             0% { transform: scale(1); opacity: 0.6; }
-            100% { transform: scale(1.5); opacity: 0; }
+            100% { transform: scale(1.4); opacity: 0; }
         }
 
-        /* Ocultar el video de precarga */
+        /* Ocultar el tag de video nativo */
         #miVideo { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
     </style>
 </head>
 <body>
 
+    <!-- Interfaz simplificada: Solo controles de captura y luz -->
     <div id="ui">
-        <div class="utilidades-bar">
-            <!-- Botón Linterna -->
-            <button id="torchButton" class="btn-circular" title="Alternar Linterna">
-                <span id="torchIcon">💡</span>
-            </button>
-            <!-- Botón Grabar con estado visual -->
-            <button id="recordButton" class="btn-circular" title="Grabar Pantalla">
-                <span id="recordIcon">🔴</span>
-            </button>
-        </div>
-        <!-- Botón Principal -->
-        <button id="playButton" class="btn-principal">VER VIDEO EN PANTALLA COMPLETA</button>
+        <!-- Botón Grabar Pantalla -->
+        <button id="recordButton" class="btn-circular" title="Grabar">🔴</button>
+        <!-- Botón Linterna (Bombillo) -->
+        <button id="torchButton" class="btn-circular" title="Linterna">💡</button>
     </div>
 
-    <!-- Video para AR: Asegúrate que 'src' sea correcto -->
+    <!-- Video preparado para reproducirse estrictamente dentro de la Realidad Aumentada -->
     <video id="miVideo" src="./video.mp4" preload="auto" crossorigin="anonymous" webkit-playsinline playsinline loop></video>
 
-    <!-- Escena AR optimizada para rastreo estable -->
-    <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning:no; filterMinCF:0.0005; filterBeta: 0.005;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights, antialias: true;" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+    <!-- Escena AR configurada para rastreo en la franela -->
+    <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: no; filterMinCF: 0.0005; filterBeta: 0.005;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
         
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-        <!-- Target para la franela -->
+        <!-- Target asignado a la franela -->
         <a-entity id="franelaTarget" mindar-image-target="targetIndex: 0">
-            <!-- Entidad de video que escalaremos dinámicamente para evitar que se achate -->
+            <!-- El video se auto-ajustará aquí en vertical sin achatarse -->
             <a-video id="arVideoEntity" src="#miVideo" position="0 0 0" opacity="1"></a-video>
         </a-entity>
     </a-scene>
 
     <script>
-        const uiDiv = document.querySelector('#ui');
         const video = document.querySelector('#miVideo');
         const arVideoEntity = document.querySelector('#arVideoEntity');
         const recordButton = document.querySelector('#recordButton');
-        const recordIcon = document.querySelector('#recordIcon');
         const torchButton = document.querySelector('#torchButton');
-        const torchIcon = document.querySelector('#torchIcon');
+        const franelaTarget = document.querySelector('#franelaTarget');
 
         // ============================================================
-        // 1. CORRECCIÓN CLAVE: AJUSTE DE ASPECTO VERTICAL DINÁMICO
+        // 1. AJUSTE DE ASPECTO VERTICAL DINÁMICO (EVITA QUE SE ACHATE)
         // ============================================================
-        
-        const ajustarProporcionVideoAR = () => {
+        const adaptarDimensionesVideo = () => {
             if (video.videoWidth > 0 && video.videoHeight > 0) {
-                // Obtenemos la relación de aspecto original (ej: 0.5625 para 9:16)
-                const ratio = video.videoWidth / video.videoHeight;
-                console.log(`Dimensiones de video detectadas: ${video.videoWidth}x${video.videoHeight} (Ratio: ${ratio})`);
+                const aspect = video.videoWidth / video.videoHeight;
+                const anchoFijo = 1.0; // Ancho estándar sobre el pecho
+                const altoCalculado = anchoFijo / aspect;
                 
-                // Definimos un ancho base para la franela (puedes ajustar este valor)
-                const anchoBase = 1.0; 
-                // Calculamos la altura necesaria para mantener la proporción sin achatarse
-                const alturaCalculada = anchoBase / ratio;
-                
-                // Aplicamos las nuevas dimensiones a la entidad A-Frame
-                arVideoEntity.setAttribute('width', anchoBase);
-                arVideoEntity.setAttribute('height', alturaCalculada);
-                console.log(`Entidad AR ajustada a: ${anchoBase}x${alturaCalculada} para evitar deformación.`);
+                arVideoEntity.setAttribute('width', anchoFijo);
+                arVideoEntity.setAttribute('height', altoCalculado);
             }
         };
 
-        // Escuchamos cuando el video ha cargado sus metadatos para saber sus dimensiones reales
         if (video.readyState >= 1) {
-            ajustarProporcionVideoAR();
+            adaptarDimensionesVideo();
         } else {
-            video.addEventListener('loadedmetadata', ajustarProporcionVideoAR);
+            video.addEventListener('loadedmetadata', adaptarDimensionesVideo);
         }
 
+        // ============================================================
+        // 2. REPRODUCCIÓN AUTOMÁTICA EN LA FRANELA (ESTILO OZZY)
+        // ============================================================
+        franelaTarget.addEventListener("targetFound", () => {
+            adaptarDimensionesVideo();
+            video.play().catch(err => {
+                console.log("Reproducción silenciada temporalmente hasta interacción");
+            });
+        });
+
+        franelaTarget.addEventListener("targetLost", () => {
+            video.pause();
+        });
 
         // ============================================================
-        // 2. COMPORTAMIENTO INTERACTIVO SOBRE LA FRANELA (TIPO OZZY)
+        // 3. GRABACIÓN DE LA EXPERIENCIA (CANVAS DE AR)
         // ============================================================
-        const franelaTarget = document.querySelector('#franelaTarget');
-        
-        franelaTarget.addEventListener("targetFound", () => {
-            console.log("Franela detectada. Reproduciendo...");
-            // Aseguramos que el ajuste de proporción esté aplicado por si acaso
-            ajustarProporcionVideoAR();
-            video.play().catch(e => console.log("Se requiere interacción para reproducir con audio.
+        let mediaRecorder;
+        let videoBlobs = [];
+        let estaGrabando = false;
+
+        recordButton.addEventListener('click', () => {
+            if (!estaGrabando) {
+                // Iniciar captura del lienzo de Realidad Aumentada
+                try {
+                    const canvasAR = document.querySelector('canvas');
+                    const stream = canvasAR.captureStream(30); // Captura a 30 FPS
+                    
+                    mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+                    videoBlobs = [];
+
+                    mediaRecorder.ondataavailable = (e) => {
+                        if (e.data.size > 0) videoBlobs.push(e.data);
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        // Crear archivo y gatillar descarga directa en el móvil
+                        const blob = new Blob(videoBlobs, { type: 'video/webm' });
+                        const url = URL.createObjectURL(blob);
+                        const enlace = document.createElement('a');
+                        enlace.href = url;
+                        enlace.download = 'mi_experiencia_AR.webm';
+                        enlace.click();
+                    };
+
+                    mediaRecorder.start();
+                    estaGrabando = true;
+                    recordButton.innerText = "⏹️";
+                    recordButton.classList.add('grabando');
+                } catch (error) {
+                    alert("Tu navegador o dispositivo no soporta la grabación directa de canvas.");
+                }
+            } else {
+                // Detener y guardar automáticamente
+                mediaRecorder.stop();
+                estaGrabando = false;
+                recordButton.innerText = "🔴";
+                recordButton.classList.remove('grabando');
+            }
+        });
+
+        // ============================================================
+        // 4. CONTROL DE LINTERNA (FLASH DE LA CÁMARA)
+        // ============================================================
+        let luzEncendida = false;
+
+        torchButton.addEventListener('click', async () => {
+            try {
+                const sceneEl = document.querySelector('a-scene');
+                const camaraTrack = sceneEl.systems["mindar-image-system"].video.srcObject.getVideoTracks()[0];
+                
+                if (camaraTrack) {
+                    const soporte = camaraTrack.getCapabilities();
+                    if (soporte.torch) {
+                        luzEncendida = !luzEncendida;
+                        await camaraTrack.applyConstraints({
+                            advanced: [{ torch: luzEncendida }]
+                        });
+                        torchButton.style.background = luzEncendida ? "rgba(255, 235, 59, 0.4)" : "rgba(0, 0, 0, 0.3)";
+                    } else {
+                        alert("La linterna no está disponible en este lente de cámara.");
+                    }
+                }
+            } catch (err) {
+                alert("Para usar la linterna, requiere acceso seguro (HTTPS) en el móvil.");
+            }
+        });
+    </script>
+</body>
+</html>
