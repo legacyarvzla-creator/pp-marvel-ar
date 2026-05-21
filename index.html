@@ -3,7 +3,6 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AR Franela Vertical 1080x1920</title>
-    <!-- Cargamos las librerías limpias -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
@@ -40,7 +39,7 @@
 
         #miVideo { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 
-        /* OBLIGATORIO: Forzamos la desactivación de cualquier botón o elemento extra que intente meter A-Frame en la pantalla */
+        /* Desactivamos cualquier botón residual de A-Frame */
         .a-enter-vr, .a-enter-ar { display: none !important; }
     </style>
 </head>
@@ -51,23 +50,16 @@
         <button id="torchButton" class="btn-circular" title="Linterna">💡</button>
     </div>
 
-    <!-- Video cargador -->
+    <!-- Video que se proyectará -->
     <video id="miVideo" src="./video.mp4" preload="auto" crossorigin="anonymous" webkit-playsinline playsinline loop></video>
 
-    <!-- 
-      MODIFICACIÓN IMPORTANTE: 
-      Añadimos 'uiScanning: no' y 'uiLoading: no' para apagar por completo los botones automáticos y pantallas que crea Mind-AR
-    -->
+    <!-- Escena configurada sin interfaces molestas -->
     <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: no; uiLoading: no; filterMinCF: 0.0005; filterBeta: 0.005;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
         
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <a-entity id="franelaTarget" mindar-image-target="targetIndex: 0">
-            <!-- 
-              SOLUCIÓN DE PROPORCIÓN COMPLETA 1080x1920:
-              Para un video de 1080 de ancho por 1920 de alto, la relación exacta es Ancho = 1 y Alto = 1.777
-              Cambiamos la escala fija aquí para obligar al motor 3D a estirar el plano en formato vertical perfecto.
-            -->
+            <!-- Proporciones estrictas 1080x1920 verticales -->
             <a-video id="arVideoEntity" src="#miVideo" width="1" height="1.777" position="0 0 0" rotation="0 0 0" opacity="1"></a-video>
         </a-entity>
     </a-scene>
@@ -78,29 +70,63 @@
         const torchButton = document.querySelector('#torchButton');
         const franelaTarget = document.querySelector('#franelaTarget');
 
-        // Lógica tipo Ozzy: solo reproduce cuando ve la franela
+        // Control tipo Ozzy: reproducir al detectar objetivo
         franelaTarget.addEventListener("targetFound", () => {
-            video.play().catch(err => {
-                console.log("Audio en espera de interacción");
-            });
+            video.play().catch(err => console.log("Audio en espera"));
         });
 
         franelaTarget.addEventListener("targetLost", () => {
             video.pause();
         });
 
-        // Captura de pantalla para el espectador
+        // ============================================================
+        // NUEVA LÓGICA DE GRABACIÓN COMPUESTA (FUSIONA PERSONA + CÁVAS AR)
+        // ============================================================
         let mediaRecorder;
         let videoBlobs = [];
         let estaGrabando = false;
+        let animationFrameId;
+        let canvasMezclador, ctxMezclador;
 
         recordButton.addEventListener('click', () => {
             if (!estaGrabando) {
                 try {
                     const canvasAR = document.querySelector('canvas');
-                    const stream = canvasAR.captureStream(30); 
+                    // Buscamos el video nativo de la cámara en vivo creado por Mind-AR
+                    const videoCamara = document.querySelector('video:not(#miVideo)');
+
+                    if (!videoCamara) {
+                        alert("No se detectó el flujo de la cámara todavía.");
+                        return;
+                    }
+
+                    // Creamos un canvas virtual temporal para "dibujar" las dos capas juntas
+                    canvasMezclador = document.createElement('canvas');
+                    canvasMezclador.width = canvasAR.width;
+                    canvasMezclador.height = canvasAR.height;
+                    ctxMezclador = canvasMezclador.getContext('2d');
+
+                    // Función en bucle para mezclar frame a frame
+                    const mezclarCapas = () => {
+                        if (!estaGrabando) return;
+                        
+                        // Capa 1: Dibujar la cámara real (la persona de fondo)
+                        ctxMezclador.drawImage(videoCamara, 0, 0, canvasMezclador.width, canvasMezclador.height);
+                        
+                        // Capa 2: Dibujar el canvas de AR encima (el video vertical en la franela)
+                        ctxMezclador.drawImage(canvasAR, 0, 0, canvasMezclador.width, canvasMezclador.height);
+                        
+                        animationFrameId = requestAnimationFrame(mezclarCapas);
+                    };
+
+                    // Iniciamos la mezcla
+                    estaGrabando = true;
+                    mezclarCapas();
+
+                    // Capturamos el stream del canvas mezclado
+                    const streamCombinado = canvasMezclador.captureStream(30); 
                     
-                    mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+                    mediaRecorder = new MediaRecorder(streamCombinado, { mimeType: 'video/webm;codecs=vp9' });
                     videoBlobs = [];
 
                     mediaRecorder.ondataavailable = (e) => {
@@ -108,30 +134,33 @@
                     };
 
                     mediaRecorder.onstop = () => {
+                        cancelAnimationFrame(animationFrameId);
                         const blob = new Blob(videoBlobs, { type: 'video/webm' });
                         const url = URL.createObjectURL(blob);
                         const enlace = document.createElement('a');
                         enlace.href = url;
-                        enlace.download = 'ar_franela_video.webm';
+                        enlace.download = 'experiencia_AR_completa.webm';
                         enlace.click();
+                        canvasMezclador = null;
                     };
 
                     mediaRecorder.start();
-                    estaGrabando = true;
                     recordButton.innerText = "⏹️";
                     recordButton.classList.add('grabando');
                 } catch (error) {
-                    alert("Tu celular no admite la grabación de canvas directamente en el navegador.");
+                    console.error(error);
+                    alert("Error al inicializar la grabación compuesta.");
+                    estaGrabando = false;
                 }
             } else {
-                mediaRecorder.stop();
                 estaGrabando = false;
+                mediaRecorder.stop();
                 recordButton.innerText = "🔴";
                 recordButton.classList.remove('grabando');
             }
         });
 
-        // Interruptor para la linterna del teléfono
+        // Control de linterna (Flash)
         let luzEncendida = false;
         torchButton.addEventListener('click', async () => {
             try {
@@ -142,16 +171,14 @@
                     const soporte = camaraTrack.getCapabilities();
                     if (soporte.torch) {
                         luzEncendida = !luzEncendida;
-                        await camaraTrack.applyConstraints({
-                            advanced: [{ torch: luzEncendida }]
-                        });
+                        await camaraTrack.applyConstraints({ advanced: [{ torch: luzEncendida }] });
                         torchButton.style.background = luzEncendida ? "rgba(255, 235, 59, 0.4)" : "rgba(0, 0, 0, 0.4)";
                     } else {
-                        alert("Linterna no disponible en este dispositivo.");
+                        alert("Linterna no disponible.");
                     }
                 }
             } catch (err) {
-                alert("La linterna requiere HTTPS seguro en entornos móviles.");
+                alert("La linterna requiere HTTPS en teléfonos.");
             }
         });
     </script>
