@@ -2,13 +2,14 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AR Franela Vertical</title>
+    <title>AR Franela Vertical 1080x1920</title>
+    <!-- Cargamos las librerías limpias -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background-color: black; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
         
-        /* Contenedor de botones flotantes (Solo Grabar y Linterna) */
+        /* Contenedor inferior: Únicamente Grabar y Linterna */
         #ui { 
             position: absolute; z-index: 9999; bottom: 40px; left: 50%; 
             transform: translateX(-50%); width: auto;
@@ -18,7 +19,6 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        /* Estilo de los botones circulares */
         .btn-circular {
             width: 60px; height: 60px; border-radius: 50%; border: 2px solid white;
             background: rgba(0, 0, 0, 0.4); color: white;
@@ -28,7 +28,6 @@
         }
         .btn-circular:active { transform: scale(0.9); background: rgba(255, 255, 255, 0.2); }
         
-        /* Estado activo de grabación */
         .btn-circular.grabando { background: rgba(244, 67, 54, 0.8); border-color: #f44336; }
         .btn-circular.grabando::after {
             content: ''; position: absolute; width: 100%; height: 100%;
@@ -39,47 +38,50 @@
             100% { transform: scale(1.4); opacity: 0; }
         }
 
-        /* Ocultar video nativo */
         #miVideo { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+        /* OBLIGATORIO: Forzamos la desactivación de cualquier botón o elemento extra que intente meter A-Frame en la pantalla */
+        .a-enter-vr, .a-enter-ar { display: none !important; }
     </style>
 </head>
 <body>
 
-    <!-- Interfaz de usuario limpia -->
     <div id="ui">
         <button id="recordButton" class="btn-circular" title="Grabar">🔴</button>
         <button id="torchButton" class="btn-circular" title="Linterna">💡</button>
     </div>
 
-    <!-- Video cargado en segundo plano -->
+    <!-- Video cargador -->
     <video id="miVideo" src="./video.mp4" preload="auto" crossorigin="anonymous" webkit-playsinline playsinline loop></video>
 
-    <!-- Escena AR tracking -->
-    <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: no; filterMinCF: 0.0005; filterBeta: 0.005;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+    <!-- 
+      MODIFICACIÓN IMPORTANTE: 
+      Añadimos 'uiScanning: no' y 'uiLoading: no' para apagar por completo los botones automáticos y pantallas que crea Mind-AR
+    -->
+    <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: no; uiLoading: no; filterMinCF: 0.0005; filterBeta: 0.005;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
         
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-        <!-- Contenedor del Target (La Franela) -->
         <a-entity id="franelaTarget" mindar-image-target="targetIndex: 0">
             <!-- 
-              SOLUCIÓN AL ACHATADO: Forzamos la relación de aspecto vertical estricta (Ancho: 0.5625, Alto: 1.0)
-              Esto equivale exactamente a un video vertical 9:16 (como los de TikTok o Reels).
+              SOLUCIÓN DE PROPORCIÓN COMPLETA 1080x1920:
+              Para un video de 1080 de ancho por 1920 de alto, la relación exacta es Ancho = 1 y Alto = 1.777
+              Cambiamos la escala fija aquí para obligar al motor 3D a estirar el plano en formato vertical perfecto.
             -->
-            <a-video id="arVideoEntity" src="#miVideo" width="0.5625" height="1.0" position="0 0 0" opacity="1"></a-video>
+            <a-video id="arVideoEntity" src="#miVideo" width="1" height="1.777" position="0 0 0" rotation="0 0 0" opacity="1"></a-video>
         </a-entity>
     </a-scene>
 
     <script>
         const video = document.querySelector('#miVideo');
-        const arVideoEntity = document.querySelector('#arVideoEntity');
         const recordButton = document.querySelector('#recordButton');
         const torchButton = document.querySelector('#torchButton');
         const franelaTarget = document.querySelector('#franelaTarget');
 
-        // Lógica de reproducción automática en la franela (Estilo Ozzy)
+        // Lógica tipo Ozzy: solo reproduce cuando ve la franela
         franelaTarget.addEventListener("targetFound", () => {
             video.play().catch(err => {
-                console.log("Audio retenido por el navegador hasta interacción");
+                console.log("Audio en espera de interacción");
             });
         });
 
@@ -87,7 +89,7 @@
             video.pause();
         });
 
-        // Grabación de pantalla del espectador
+        // Captura de pantalla para el espectador
         let mediaRecorder;
         let videoBlobs = [];
         let estaGrabando = false;
@@ -110,7 +112,7 @@
                         const url = URL.createObjectURL(blob);
                         const enlace = document.createElement('a');
                         enlace.href = url;
-                        enlace.download = 'mi_experiencia_AR.webm';
+                        enlace.download = 'ar_franela_video.webm';
                         enlace.click();
                     };
 
@@ -119,7 +121,7 @@
                     recordButton.innerText = "⏹️";
                     recordButton.classList.add('grabando');
                 } catch (error) {
-                    alert("Tu dispositivo no soporta la grabación directa desde el navegador.");
+                    alert("Tu celular no admite la grabación de canvas directamente en el navegador.");
                 }
             } else {
                 mediaRecorder.stop();
@@ -129,7 +131,7 @@
             }
         });
 
-        // Control de linterna para teléfonos
+        // Interruptor para la linterna del teléfono
         let luzEncendida = false;
         torchButton.addEventListener('click', async () => {
             try {
@@ -145,11 +147,11 @@
                         });
                         torchButton.style.background = luzEncendida ? "rgba(255, 235, 59, 0.4)" : "rgba(0, 0, 0, 0.4)";
                     } else {
-                        alert("Linterna no disponible en esta cámara.");
+                        alert("Linterna no disponible en este dispositivo.");
                     }
                 }
             } catch (err) {
-                alert("La linterna requiere conexión HTTPS segura en móviles.");
+                alert("La linterna requiere HTTPS seguro en entornos móviles.");
             }
         });
     </script>
