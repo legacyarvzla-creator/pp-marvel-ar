@@ -37,21 +37,35 @@
             100% { transform: scale(1.4); opacity: 0; }
         }
 
+        /* Botón de activación de sonido flotante superior */
+        #boton-audio {
+            position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
+            z-index: 9999; padding: 12px 24px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(0, 0, 0, 0.7); color: white; font-weight: bold; font-size: 14px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px); cursor: pointer; transition: all 0.2s;
+        }
+        #boton-audio:active { transform: translateX(-50%) scale(0.95); }
+
         #miVideo { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
         .a-enter-vr, .a-enter-ar { display: none !important; }
     </style>
 </head>
 <body>
 
+    <!-- Botón flotante para activar el sonido (desaparece al pulsarlo) -->
+    <button id="boton-audio">🔊 Activar Sonido</button>
+
+    <!-- Botones inferiores de la app -->
     <div id="ui">
         <button id="recordButton" class="btn-circular" title="Grabar">🔴</button>
         <button id="torchButton" class="btn-circular" title="Linterna">💡</button>
     </div>
 
-    <!-- Video vertical 1080x1920 -->
-    <video id="miVideo" src="./video.mp4" preload="auto" crossorigin="anonymous" webkit-playsinline playsinline loop></video>
+    <!-- El video maestro: inicia muteado de forma obligatoria para evitar bloqueos del sistema -->
+    <video id="miVideo" src="./video.mp4" preload="auto" crossorigin="anonymous" webkit-playsinline playsinline loop muted></video>
 
-    <!-- Escena configurada con preservación estricta de dibujo -->
+    <!-- Escena AR -->
     <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: no; uiLoading: no; filterMinCF: 0.0005; filterBeta: 0.005;" 
              color-space="sRGB" 
              renderer="colorManagement: true, physicallyCorrectLights, preserveDrawingBuffer: true, alpha: true" 
@@ -61,8 +75,8 @@
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <a-entity id="franelaTarget" mindar-image-target="targetIndex: 0">
-            <!-- Relación estricta de aspecto 9:16 vertical (Ancho 1, Alto 1.777) -->
-            <a-video id="arVideoEntity" src="#miVideo" width="1" height="1.777" position="0 0 0" rotation="0 0 0" opacity="1"></a-video>
+            <!-- NOTA: Subí la escala de 1 1 1 a 1.15 1.15 1 para agrandar el video un 15% y tapar bordes -->
+            <a-video id="arVideoEntity" src="#miVideo" width="1" height="1.777" position="0 0 0" rotation="0 0 0" scale="1.15 1.15 1" opacity="1"></a-video>
         </a-entity>
     </a-scene>
 
@@ -70,11 +84,19 @@
         const video = document.querySelector('#miVideo');
         const recordButton = document.querySelector('#recordButton');
         const torchButton = document.querySelector('#torchButton');
+        const botonAudio = document.querySelector('#boton-audio');
         const franelaTarget = document.querySelector('#franelaTarget');
 
-        // Lógica de reproducción automática en la franela
+        // Lógica interactiva para quitar el "muted" con acción del usuario
+        botonAudio.addEventListener('click', () => {
+            video.muted = false; // Activamos el audio nativo
+            video.play().catch(err => console.log("El video esperará a que el target aparezca"));
+            botonAudio.style.display = 'none'; // El botón se esfuma de la pantalla
+        });
+
+        // Lógica de reproducción automática al detectar la franela
         franelaTarget.addEventListener("targetFound", () => {
-            video.play().catch(err => console.log("Audio esperando interacción del espectador"));
+            video.play().catch(err => console.log("Video listo, esperando interacción o detección"));
         });
 
         franelaTarget.addEventListener("targetLost", () => {
@@ -82,7 +104,7 @@
         });
 
         // ============================================================
-        // MEZCLADOR INTEGRAL DEFINITIVO (PERSONA + AR + AUDIO)
+        // MEZCLADOR INTEGRAL (CAMARA + ESCENA AR + AUDIO INTERNO)
         // ============================================================
         let mediaRecorder;
         let videoBlobs = [];
@@ -94,7 +116,6 @@
             if (!estaGrabando) {
                 try {
                     const canvasAR = document.querySelector('canvas');
-                    // Buscamos la etiqueta de video interna donde se ve a la persona real
                     const videoCamaraPersona = document.querySelector('video:not(#miVideo)');
 
                     if (!videoCamaraPersona) {
@@ -102,20 +123,18 @@
                         return;
                     }
 
-                    // Creamos el canvas fantasma definitivo con las dimensiones exactas de la pantalla
                     canvasFantasma = document.createElement('canvas');
                     canvasFantasma.width = canvasAR.clientWidth * window.devicePixelRatio;
                     canvasFantasma.height = canvasAR.clientHeight * window.devicePixelRatio;
                     ctxFantasma = canvasFantasma.getContext('2d');
 
-                    // Bucle manual forzado de fotogramas para evitar pantallas negras
                     const procesarFrame = () => {
                         if (!estaGrabando) return;
 
-                        // Paso A: Pintamos la cámara en vivo de la persona ocupando todo el fondo
+                        // Fondo: Persona real
                         ctxFantasma.drawImage(videoCamaraPersona, 0, 0, canvasFantasma.width, canvasFantasma.height);
                         
-                        // Paso B: Pintamos encima los elementos AR (el video vertical en la franela)
+                        // Encima: Capa AR (Video sobre la franela)
                         ctxFantasma.drawImage(canvasAR, 0, 0, canvasFantasma.width, canvasFantasma.height);
                         
                         loopMezclador = requestAnimationFrame(procesarFrame);
@@ -124,21 +143,18 @@
                     estaGrabando = true;
                     procesarFrame();
 
-                    // Capturamos la señal visual del canvas unificado
                     const streamVisual = canvasFantasma.captureStream(30);
                     const pistaVideoCombinada = streamVisual.getVideoTracks()[0];
 
-                    // Capturamos la señal de audio directamente desde el archivo de video por contexto nativo
+                    // Capturamos el flujo de audio directamente desde nuestro video track
                     const streamAudioNativo = video.captureStream ? video.captureStream() : video.mozCaptureStream ? video.mozCaptureStream() : null;
                     const pistaAudio = streamAudioNativo ? streamAudioNativo.getAudioTracks()[0] : null;
 
-                    // Unimos las piezas en un flujo final blindado
                     const componentesFlujo = [pistaVideoCombinada];
                     if (pistaAudio) componentesFlujo.push(pistaAudio);
 
                     const streamFinal = new MediaStream(componentesFlujo);
 
-                    // Elegimos formatos universales según el dispositivo (WebM para Android, MP4 para iOS)
                     let codecIdeal = 'video/webm;codecs=vp8,opus';
                     if (!MediaRecorder.isTypeSupported(codecIdeal)) {
                         codecIdeal = 'video/mp4'; 
@@ -158,7 +174,6 @@
                         const enlace = document.createElement('a');
                         enlace.href = urlDescarga;
                         
-                        // Le damos extensión correcta según el teléfono
                         const extension = videoBlobs[0].type.includes('mp4') ? '.mp4' : '.webm';
                         enlace.download = 'experiencia_AR_completa' + extension;
                         enlace.click();
@@ -184,7 +199,7 @@
             }
         });
 
-        // Control de la linterna (Flash del celular)
+        // Control de la linterna (Flash)
         let luzEncendida = false;
         torchButton.addEventListener('click', async () => {
             try {
