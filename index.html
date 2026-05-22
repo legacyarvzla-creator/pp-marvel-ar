@@ -37,33 +37,20 @@
             100% { transform: scale(1.4); opacity: 0; }
         }
 
-        /* Botón de activación de sonido flotante superior */
-        #boton-audio {
-            position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
-            z-index: 9999; padding: 12px 24px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.3);
-            background: rgba(0, 0, 0, 0.7); color: white; font-weight: bold; font-size: 14px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3); backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px); cursor: pointer; transition: all 0.2s;
-        }
-        #boton-audio:active { transform: translateX(-50%) scale(0.95); }
-
         #miVideo { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
         .a-enter-vr, .a-enter-ar { display: none !important; }
     </style>
 </head>
 <body>
 
-    <!-- Botón flotante para activar el sonido (desaparece al pulsarlo) -->
-    <button id="boton-audio">🔊 Activar Sonido</button>
-
-    <!-- Botones inferiores de la app -->
+    <!-- Botones inferiores de la app (Sin botones molestos arriba) -->
     <div id="ui">
         <button id="recordButton" class="btn-circular" title="Grabar">🔴</button>
         <button id="torchButton" class="btn-circular" title="Linterna">💡</button>
     </div>
 
-    <!-- El video maestro: inicia muteado de forma obligatoria para evitar bloqueos del sistema -->
-    <video id="miVideo" src="./video.mp4" preload="auto" crossorigin="anonymous" webkit-playsinline playsinline loop muted></video>
+    <!-- Video maestro: mantiene sus propiedades nativas de reproducción en línea -->
+    <video id="miVideo" src="./video.mp4" preload="auto" crossorigin="anonymous" webkit-playsinline playsinline loop></video>
 
     <!-- Escena AR -->
     <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: no; uiLoading: no; filterMinCF: 0.0005; filterBeta: 0.005;" 
@@ -75,7 +62,7 @@
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <a-entity id="franelaTarget" mindar-image-target="targetIndex: 0">
-            <!-- NOTA: Subí la escala de 1 1 1 a 1.15 1.15 1 para agrandar el video un 15% y tapar bordes -->
+            <!-- Escala optimizada al 115% para cubrir los bordes físicos del target -->
             <a-video id="arVideoEntity" src="#miVideo" width="1" height="1.777" position="0 0 0" rotation="0 0 0" scale="1.15 1.15 1" opacity="1"></a-video>
         </a-entity>
     </a-scene>
@@ -84,27 +71,42 @@
         const video = document.querySelector('#miVideo');
         const recordButton = document.querySelector('#recordButton');
         const torchButton = document.querySelector('#torchButton');
-        const botonAudio = document.querySelector('#boton-audio');
         const franelaTarget = document.querySelector('#franelaTarget');
 
-        // Lógica interactiva para quitar el "muted" con acción del usuario
-        botonAudio.addEventListener('click', () => {
-            video.muted = false; // Activamos el audio nativo
-            video.play().catch(err => console.log("El video esperará a que el target aparezca"));
-            botonAudio.style.display = 'none'; // El botón se esfuma de la pantalla
-        });
+        // Desbloqueo pasivo de audio: cualquier toque en la pantalla le avisa al navegador que el usuario interactúa
+        const activarContextoAudio = () => {
+            video.play().then(() => {
+                // Si el target no está activo en este instante, lo pausamos de inmediato, 
+                // pero el canal de audio ya quedó autorizado por el navegador móvil
+                if (!targetDetectado) {
+                    video.pause();
+                }
+            }).catch(err => console.log("Esperando interacción nativa..."));
+            
+            // Removemos los listeners para que no se ejecute este proceso más de una vez
+            document.removeEventListener('click', activarContextoAudio);
+            document.removeEventListener('touchstart', activarContextoAudio);
+        };
+        document.addEventListener('click', activarContextoAudio);
+        document.addEventListener('touchstart', activarContextoAudio);
 
-        // Lógica de reproducción automática al detectar la franela
+        let targetDetectado = false;
+
+        // Lógica de reproducción automática en la franela
         franelaTarget.addEventListener("targetFound", () => {
-            video.play().catch(err => console.log("Video listo, esperando interacción o detección"));
+            targetDetectado = true;
+            video.play().catch(err => {
+                console.log("Audio retenido hasta que el usuario toque la pantalla al interactuar o grabar");
+            });
         });
 
         franelaTarget.addEventListener("targetLost", () => {
+            targetDetectado = false;
             video.pause();
         });
 
         // ============================================================
-        // MEZCLADOR INTEGRAL (CAMARA + ESCENA AR + AUDIO INTERNO)
+        // MEZCLADOR INTEGRAL (CAMARA + ESCENA AR + AUDIO ESTEREO)
         // ============================================================
         let mediaRecorder;
         let videoBlobs = [];
@@ -131,10 +133,10 @@
                     const procesarFrame = () => {
                         if (!estaGrabando) return;
 
-                        // Fondo: Persona real
+                        // Fondo: Cámara en vivo
                         ctxFantasma.drawImage(videoCamaraPersona, 0, 0, canvasFantasma.width, canvasFantasma.height);
                         
-                        // Encima: Capa AR (Video sobre la franela)
+                        // Encima: Elementos AR
                         ctxFantasma.drawImage(canvasAR, 0, 0, canvasFantasma.width, canvasFantasma.height);
                         
                         loopMezclador = requestAnimationFrame(procesarFrame);
@@ -146,7 +148,7 @@
                     const streamVisual = canvasFantasma.captureStream(30);
                     const pistaVideoCombinada = streamVisual.getVideoTracks()[0];
 
-                    // Capturamos el flujo de audio directamente desde nuestro video track
+                    // Captura del flujo de audio estéreo nativo directo del archivo
                     const streamAudioNativo = video.captureStream ? video.captureStream() : video.mozCaptureStream ? video.mozCaptureStream() : null;
                     const pistaAudio = streamAudioNativo ? streamAudioNativo.getAudioTracks()[0] : null;
 
