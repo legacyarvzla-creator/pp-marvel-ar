@@ -2,24 +2,23 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.1/dist/mindar-image-aframe.prod.js"></script>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
         body { margin: 0; overflow: hidden; }
         #ui { position: absolute; z-index: 9999; bottom: 30px; width: 100%; text-align: center; display: flex; justify-content: center; gap: 15px; }
-        button { padding: 15px 25px; border-radius: 30px; border: none; background: #e91e63; color: white; font-weight: bold; cursor: pointer; }
-        #recordBtn.recording { background: #ff0000; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(0.9); } }
+        button { padding: 15px 25px; border-radius: 30px; border: none; background: #e91e63; color: white; font-weight: bold; }
+        #recordBtn.recording { background: #ff0000; }
     </style>
 </head>
 <body>
     <div id="ui">
-        <button id="recordBtn">Grabar Video</button>
+        <button id="recordBtn">Grabar</button>
         <button id="lightBtn">Luz</button>
     </div>
 
     <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: true;" 
-             embedded renderer="preserveDrawingBuffer: true; antialias: true; colorManagement: true" 
+             embedded renderer="preserveDrawingBuffer: true; colorManagement: true" 
              vr-mode-ui="enabled: false">
         
         <a-assets>
@@ -29,45 +28,47 @@
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <a-entity mindar-image-target="targetIndex: 0">
-            <a-entity geometry="primitive: plane; width: 1.5; height: 2.66"
-                      material="shader: flat; src: #vid; transparent: true">
-            </a-entity>
+            <a-video src="#vid" width="1.5" height="2.66" position="0 0 0"></a-video>
+            <a-light id="myLight" type="ambient" intensity="1"></a-light>
         </a-entity>
     </a-scene>
 
     <script>
         const video = document.querySelector('#vid');
         const recordBtn = document.querySelector('#recordBtn');
+        const light = document.querySelector('#myLight');
         let mediaRecorder, chunks = [], isRecording = false;
 
-        // Configuración de Audio (Mezclador)
+        // Configuración de audio (para capturar lo que suena en el video)
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const mixer = audioCtx.createMediaStreamDestination();
         const videoSource = audioCtx.createMediaElementSource(video);
         videoSource.connect(mixer);
         videoSource.connect(audioCtx.destination);
 
-        // Iniciar video al detectar
         document.querySelector('a-scene').addEventListener("targetFound", () => {
             video.muted = false;
             video.play();
         });
 
-        // Lógica de grabación
+        document.querySelector('#lightBtn').addEventListener('click', () => {
+            light.setAttribute('intensity', light.getAttribute('intensity') == 1 ? 2 : 1);
+        });
+
         recordBtn.addEventListener('click', async () => {
             if (!isRecording) {
+                // Capturamos el canvas de la escena que contiene la cámara y el video
                 const stream = document.querySelector('canvas.a-canvas').captureStream(30);
                 const audioTracks = mixer.stream.getAudioTracks();
                 const combined = new MediaStream([stream.getVideoTracks()[0], ...audioTracks]);
                 
-                mediaRecorder = new MediaRecorder(combined, { mimeType: 'video/webm' });
+                mediaRecorder = new MediaRecorder(combined, { mimeType: 'video/webm;codecs=vp9' });
                 mediaRecorder.ondataavailable = e => chunks.push(e.data);
                 mediaRecorder.onstop = () => {
                     const blob = new Blob(chunks, { type: 'video/webm' });
-                    const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'grabacion_ar.webm';
+                    a.href = URL.createObjectURL(blob);
+                    a.download = 'grabacion_vertical.webm';
                     a.click();
                     chunks = [];
                 };
@@ -79,7 +80,7 @@
                 mediaRecorder.stop();
                 isRecording = false;
                 recordBtn.classList.remove('recording');
-                recordBtn.innerText = "Grabar Video";
+                recordBtn.innerText = "Grabar";
             }
         });
     </script>
