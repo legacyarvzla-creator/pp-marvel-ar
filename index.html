@@ -5,70 +5,56 @@
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: black; }
-        #ui { 
-            position: absolute; z-index: 9999; bottom: 30px; left: 50%; 
-            transform: translateX(-50%); width: 100%; text-align: center;
-        }
-        button { 
-            padding: 20px 40px; border-radius: 50px; border: none; 
-            background: #e91e63; color: white; font-size: 18px; 
-            font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-        }
-        /* Esto asegura que el video oculto no interfiera pero esté listo */
-        #miVideo { position: absolute; width: 1px; height: 1px; opacity: 0; }
+        body { margin: 0; overflow: hidden; }
+        #ui { position: absolute; z-index: 9999; bottom: 30px; width: 100%; display: flex; justify-content: center; gap: 10px; }
+        button { padding: 15px 25px; border-radius: 20px; border: none; background: #e91e63; color: white; font-weight: bold; }
+        #lightBtn { background: #ffc107; color: black; }
     </style>
 </head>
 <body>
     <div id="ui">
-        <button id="playButton">VER VIDEO EN PANTALLA COMPLETA</button>
+        <button id="recordBtn">Grabar</button>
+        <button id="lightBtn">Luz ON/OFF</button>
     </div>
 
-    <video id="miVideo" src="./video.mp4" preload="auto" crossorigin="anonymous" webkit-playsinline playsinline></video>
-
-    <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: true;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
-        
+    <a-scene id="scene" mindar-image="imageTargetSrc: ./targets.mind; autoStart: true;" embedded renderer="colorManagement: true" vr-mode-ui="enabled: false">
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-        <a-entity mindar-image-target="targetIndex: 0">
-            <a-video src="#miVideo" width="0.6" height="1" position="0 0 0" opacity="1"></a-video>
+        
+        <a-entity id="target" mindar-image-target="targetIndex: 0">
+            <a-video id="miVideo" src="./video.mp4" width="0.6" height="1" position="0 0 0" playsinline webkit-playsinline></a-video>
+            <a-light id="myLight" type="ambient" intensity="1"></a-light>
         </a-entity>
     </a-scene>
 
     <script>
-        const btn = document.querySelector("#playButton");
-        const video = document.querySelector("#miVideo");
-
-        btn.addEventListener('click', function() {
-            // Quitamos el botón
-            document.querySelector("#ui").style.display = "none";
-            
-            // Iniciamos reproducción
-            video.play();
-
-            // TRUCO FINAL PARA PANTALLA COMPLETA
-            // Si es iPhone (Safari) usamos webkitEnterFullscreen
-            if (video.webkitEnterFullscreen) {
-                video.webkitEnterFullscreen();
-            } 
-            // Si es Android usamos el estándar
-            else if (video.requestFullscreen) {
-                video.requestFullscreen();
-            } else if (video.webkitRequestFullscreen) {
-                video.webkitRequestFullscreen();
-            }
+        // 1. Lógica de Luz
+        const light = document.querySelector("#myLight");
+        document.querySelector("#lightBtn").addEventListener('click', () => {
+            light.setAttribute('intensity', light.getAttribute('intensity') == 1 ? 2 : 1);
         });
 
-        // Detectar cuando el video termina o el usuario cierra la pantalla completa
-        const cerrarVideo = () => {
-            video.pause();
-            // Opcional: recargar la página para volver a escanear
-            // window.location.reload(); 
-        };
+        // 2. Lógica de Grabación (MediaRecorder)
+        const scene = document.querySelector('a-scene');
+        let chunks = [];
+        let recorder;
 
-        video.addEventListener('webkitendfullscreen', cerrarVideo);
-        video.addEventListener('fullscreenchange', () => {
-            if (!document.fullscreenElement) cerrarVideo();
+        document.querySelector("#recordBtn").addEventListener('click', () => {
+            const canvas = document.querySelector('canvas');
+            const stream = canvas.captureStream(30);
+            recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+            
+            recorder.ondataavailable = e => chunks.push(e.data);
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'mi_video_ar.webm';
+                a.click();
+            };
+            recorder.start();
+            alert("Grabando... Presiona otra vez para detener y guardar.");
+            document.querySelector("#recordBtn").onclick = () => recorder.stop();
         });
     </script>
 </body>
