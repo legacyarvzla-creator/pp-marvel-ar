@@ -8,8 +8,9 @@
         body { margin: 0; overflow: hidden; }
         #ui { position: absolute; z-index: 9999; bottom: 30px; width: 100%; display: flex; justify-content: center; gap: 15px; }
         button { padding: 15px 30px; border-radius: 50px; border: none; background: #e91e63; color: white; font-weight: bold; }
-        #recordBtn.recording { background: #ff0000; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(0.9); } }
+        #recordBtn.recording { background: #ff0000; }
+        /* Escondemos el canvas de grabación para que no interfiera */
+        #recording-canvas { display: none; }
     </style>
 </head>
 <body>
@@ -18,10 +19,11 @@
         <button id="lightBtn">Luz</button>
     </div>
 
-    <canvas id="render-canvas" style="display:none;"></canvas>
+    <canvas id="recording-canvas"></canvas>
 
     <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: true;" 
-             embedded renderer="preserveDrawingBuffer: true; colorManagement: true" 
+             embedded 
+             renderer="preserveDrawingBuffer: true; colorManagement: true" 
              vr-mode-ui="enabled: false">
         
         <a-assets>
@@ -38,11 +40,11 @@
 
     <script>
         const video = document.querySelector('#vid');
-        const canvas = document.querySelector('#render-canvas');
-        const ctx = canvas.getContext('2d', { alpha: false });
-        let isRecording = false, chunks = [], recorder;
+        const recordingCanvas = document.querySelector('#recording-canvas');
+        const ctx = recordingCanvas.getContext('2d', { alpha: false });
+        let isRecording = false, mediaRecorder, chunks = [];
 
-        // Audio como en Metallica
+        // --- LÓGICA DE AUDIO (Igual a Marvel) ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const mixer = audioCtx.createMediaStreamDestination();
         const videoSource = audioCtx.createMediaElementSource(video);
@@ -54,34 +56,36 @@
             video.play();
         });
 
+        // --- LÓGICA DE GRABACIÓN MANUAL (La clave para no dividir pantalla) ---
         document.querySelector('#recordBtn').addEventListener('click', async () => {
             if (!isRecording) {
-                const cameraVideo = document.querySelector('video'); // Flujo de la cámara
+                const cameraVideo = document.querySelector('video:not([id])'); 
                 const aframeCanvas = document.querySelector('canvas.a-canvas');
                 
-                canvas.width = cameraVideo.videoWidth;
-                canvas.height = cameraVideo.videoHeight;
+                // Forzamos el tamaño del canvas de grabación al de la cámara
+                recordingCanvas.width = cameraVideo.videoWidth;
+                recordingCanvas.height = cameraVideo.videoHeight;
 
-                // Grabación manual frame por frame
-                const stream = canvas.captureStream(24);
+                const stream = recordingCanvas.captureStream(24);
                 const combined = new MediaStream([stream.getVideoTracks()[0], ...mixer.stream.getAudioTracks()]);
                 
-                recorder = new MediaRecorder(combined, { mimeType: 'video/webm' });
-                recorder.ondataavailable = e => chunks.push(e.data);
-                recorder.onstop = () => {
+                mediaRecorder = new MediaRecorder(combined, { mimeType: 'video/webm' });
+                mediaRecorder.ondataavailable = e => chunks.push(e.data);
+                mediaRecorder.onstop = () => {
                     const blob = new Blob(chunks, { type: 'video/webm' });
                     const a = document.createElement('a');
                     a.href = URL.createObjectURL(blob);
-                    a.download = 'grabacion_legacy.webm';
+                    a.download = 'grabacion_final.webm';
                     a.click();
                     chunks = [];
                 };
-                recorder.start();
-                
+                mediaRecorder.start();
+
+                // Bucle de dibujo manual: une cámara + A-Frame en un solo canvas
                 function render() {
                     if (!isRecording) return;
-                    ctx.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(aframeCanvas, 0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(cameraVideo, 0, 0, recordingCanvas.width, recordingCanvas.height);
+                    ctx.drawImage(aframeCanvas, 0, 0, recordingCanvas.width, recordingCanvas.height);
                     requestAnimationFrame(render);
                 }
                 render();
@@ -91,7 +95,7 @@
                 document.querySelector('#recordBtn').innerText = "Detener";
             } else {
                 isRecording = false;
-                recorder.stop();
+                mediaRecorder.stop();
                 document.querySelector('#recordBtn').classList.remove('recording');
                 document.querySelector('#recordBtn').innerText = "Grabar";
             }
