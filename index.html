@@ -2,46 +2,68 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LegacyAR_Produccion</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: transparent; }
-        #ui { position: absolute; z-index: 9999; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
-        button { padding: 15px 25px; border-radius: 30px; border: none; background: #e91e63; color: white; font-weight: bold; }
+        body { margin: 0; overflow: hidden; background-color: black; }
+        #ui { position: absolute; z-index: 9999; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; }
+        .btn { width: 60px; height: 60px; border-radius: 50%; border: 2px solid white; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; cursor: pointer; }
     </style>
 </head>
 <body>
     <div id="ui">
-        <button id="lightBtn">Luz ON/OFF</button>
+        <button id="recordButton" class="btn">REC</button>
     </div>
 
-    <video id="miVideo" src="./video.mp4" loop="true" playsinline webkit-playsinline muted crossorigin="anonymous" style="display:none"></video>
+    <video id="miVideo" src="./video.mp4" playsinline webkit-playsinline loop crossorigin="anonymous" style="display:none"></video>
 
     <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: true;" 
-             embedded 
-             renderer="colorManagement: true; preserveDrawingBuffer: true;" 
-             vr-mode-ui="enabled: false">
+             embedded renderer="preserveDrawingBuffer: true; alpha: true" vr-mode-ui="enabled: false">
         
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-        
+
         <a-entity mindar-image-target="targetIndex: 0">
-            <a-video src="#miVideo" width="1.5" height="2.66" position="0 0 0"></a-video>
-            <a-light id="myLight" type="ambient" intensity="1"></a-light>
+            <a-video src="#miVideo" width="1" height="1.777" position="0 0 0"></a-video>
         </a-entity>
     </a-scene>
 
     <script>
-        const video = document.querySelector("#miVideo");
-        const light = document.querySelector("#myLight");
-        const scene = document.querySelector('a-scene');
+        const video = document.querySelector('#miVideo');
+        const recordBtn = document.querySelector('#recordButton');
+        let mediaRecorder, chunks = [];
 
-        // Activación de video
-        scene.addEventListener("targetFound", () => video.play());
-        scene.addEventListener("targetLost", () => video.pause());
+        // Iniciar video al detectar
+        document.querySelector('a-scene').addEventListener("targetFound", () => video.play());
 
-        // Botón de luz
-        document.querySelector("#lightBtn").addEventListener('click', () => {
-            light.setAttribute('intensity', light.getAttribute('intensity') == 1 ? 2.5 : 1);
+        recordBtn.addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+                recordBtn.style.backgroundColor = "rgba(0,0,0,0.5)";
+                return;
+            }
+
+            // Captura directa del Canvas de A-Frame
+            const canvas = document.querySelector('canvas');
+            const stream = canvas.captureStream(30);
+            
+            // Extraer audio directamente del video (EL SECRETO DE TU CÓDIGO FUNCIONAL)
+            const audioStream = video.captureStream ? video.captureStream() : video.mozCaptureStream();
+            const audioTrack = audioStream.getAudioTracks()[0];
+            if (audioTrack) stream.addTrack(audioTrack);
+
+            mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+            mediaRecorder.ondataavailable = e => chunks.push(e.data);
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'grabacion.webm';
+                a.click();
+                chunks = [];
+            };
+            mediaRecorder.start();
+            recordBtn.style.backgroundColor = "red";
         });
     </script>
 </body>
