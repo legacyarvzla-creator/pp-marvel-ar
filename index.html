@@ -1,57 +1,227 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AR Franela Definitivo</title>
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    <style>
-        body { margin: 0; overflow: hidden; background-color: black; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
-        #ui { position: absolute; z-index: 9999; bottom: 40px; left: 50%; transform: translateX(-50%); width: auto; display: flex; gap: 25px; justify-content: center; align-items: center; padding: 12px 25px; background: rgba(0, 0, 0, 0.6); border-radius: 50px; backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
-        .btn-circular { width: 60px; height: 60px; border-radius: 50%; border: 2px solid white; background: rgba(0, 0, 0, 0.4); color: white; font-size: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
-        .btn-circular:active { transform: scale(0.9); }
-        .btn-circular.grabando { background: rgba(244, 67, 54, 0.9); border-color: #f44336; }
-        #miVideo { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-        .a-enter-vr { display: none !important; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AR Franela Definitivo</title>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: black; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        /* Interfaz de usuario limpia inferior */
+        #ui { 
+            position: absolute; z-index: 9999; bottom: 40px; left: 50%; 
+            transform: translateX(-50%); width: auto;
+            display: flex; gap: 25px; justify-content: center; align-items: center;
+            padding: 12px 25px; background: rgba(0, 0, 0, 0.6); border-radius: 50px;
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-circular {
+            width: 60px; height: 60px; border-radius: 50%; border: 2px solid white;
+            background: rgba(0, 0, 0, 0.4); color: white;
+            font-size: 24px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.2s ease; position: relative;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+        .btn-circular:active { transform: scale(0.9); }
+        
+        .btn-circular.grabando { background: rgba(244, 67, 54, 0.9); border-color: #f44336; }
+        .btn-circular.grabando::after {
+            content: ''; position: absolute; width: 100%; height: 100%;
+            border-radius: 50%; background: inherit; animation: pulso 1.5s infinite;
+        }
+        @keyframes pulso {
+            0% { transform: scale(1); opacity: 0.6; }
+            100% { transform: scale(1.4); opacity: 0; }
+        }
+
+        #miVideo { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+        .a-enter-vr, .a-enter-ar { display: none !important; }
+    </style>
 </head>
 <body>
 
-    <div id="ui">
-        <button id="recordButton" class="btn-circular" title="Grabar">🔴</button>
-        <button id="torchButton" class="btn-circular" title="Linterna">💡</button>
-    </div>
+    <!-- Botones inferiores de la app (Sin botones molestos arriba) -->
+    <div id="ui">
+        <button id="recordButton" class="btn-circular" title="Grabar">🔴</button>
+        <button id="torchButton" class="btn-circular" title="Linterna">💡</button>
+    </div>
 
-    <video id="miVideo" src="video.mp4" preload="auto" crossorigin="anonymous" webkit-playsinline playsinline loop></video>
+    <!-- Video maestro: mantiene sus propiedades nativas de reproducción en línea -->
+    <video id="miVideo" src="./video.mp4" preload="auto" crossorigin="anonymous" webkit-playsinline playsinline loop></video>
 
-    <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: no; uiLoading: no;" 
-             renderer="colorManagement: true, physicallyCorrectLights, preserveDrawingBuffer: true, alpha: true" 
-             vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
-        
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-        <a-entity id="franelaTarget" mindar-image-target="targetIndex: 0">
-            <a-video id="arVideoEntity" src="#miVideo" width="1" height="1.777" position="0 0 0" rotation="0 0 0" scale="1.15 1.15 1" material="shader: flat; src: #miVideo;"></a-video>
-        </a-entity>
-    </a-scene>
+    <!-- Escena AR -->
+    <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: no; uiLoading: no; filterMinCF: 0.0005; filterBeta: 0.005;" 
+             color-space="sRGB" 
+             renderer="colorManagement: true, physicallyCorrectLights, preserveDrawingBuffer: true, alpha: true" 
+             vr-mode-ui="enabled: false" 
+             device-orientation-permission-ui="enabled: false">
+        
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <script>
-        const video = document.querySelector('#miVideo');
-        const recordButton = document.querySelector('#recordButton');
-        const torchButton = document.querySelector('#torchButton');
+        <a-entity id="franelaTarget" mindar-image-target="targetIndex: 0">
+            <!-- Escala optimizada al 115% para cubrir los bordes físicos del target -->
+            <a-video id="arVideoEntity" src="#miVideo" width="1" height="1.777" position="0 0 0" rotation="0 0 0" scale="1.15 1.15 1" opacity="1"></a-video>
+        </a-entity>
+    </a-scene>
 
-        // Activación de contexto de audio
-        const autorizarAudio = () => { video.play().then(() => video.pause()); document.removeEventListener('click', autorizarAudio); };
-        document.addEventListener('click', autorizarAudio);
+    <script>
+        const video = document.querySelector('#miVideo');
+        const recordButton = document.querySelector('#recordButton');
+        const torchButton = document.querySelector('#torchButton');
+        const franelaTarget = document.querySelector('#franelaTarget');
 
-        document.querySelector('#franelaTarget').addEventListener("targetFound", () => video.play());
-        document.querySelector('#franelaTarget').addEventListener("targetLost", () => video.pause());
+        // Desbloqueo pasivo de audio: cualquier toque en la pantalla le avisa al navegador que el usuario interactúa
+        const activarContextoAudio = () => {
+            video.play().then(() => {
+                // Si el target no está activo en este instante, lo pausamos de inmediato, 
+                // pero el canal de audio ya quedó autorizado por el navegador móvil
+                if (!targetDetectado) {
+                    video.pause();
+                }
+            }).catch(err => console.log("Esperando interacción nativa..."));
+            
+            // Removemos los listeners para que no se ejecute este proceso más de una vez
+            document.removeEventListener('click', activarContextoAudio);
+            document.removeEventListener('touchstart', activarContextoAudio);
+        };
+        document.addEventListener('click', activarContextoAudio);
+        document.addEventListener('touchstart', activarContextoAudio);
 
-        let mediaRecorder, videoBlobs, estaGrabando = false, loopMezclador, canvasFantasma;
+        let targetDetectado = false;
 
-        recordButton.addEventListener('click', async () => {
-            if (!estaGrabando) {
-                const canvasAR = document.querySelector('canvas');
-                const videoCam = document.querySelector('video:not(#miVideo)');
-                canvasFantasma = document.createElement('canvas');
-                canvasFantasma.width = canvasAR.clientWidth * window.devicePixelRatio;
-                canvasFantasma.height = canvasAR.clientHeight * window.devicePixelRatio;
+        // Lógica de reproducción automática en la franela
+        franelaTarget.addEventListener("targetFound", () => {
+            targetDetectado = true;
+            video.play().catch(err => {
+                console.log("Audio retenido hasta que el usuario toque la pantalla al interactuar o grabar");
+            });
+        });
+
+        franelaTarget.addEventListener("targetLost", () => {
+            targetDetectado = false;
+            video.pause();
+        });
+
+        // ============================================================
+        // MEZCLADOR INTEGRAL (CAMARA + ESCENA AR + AUDIO ESTEREO)
+        // ============================================================
+        let mediaRecorder;
+        let videoBlobs = [];
+        let estaGrabando = false;
+        let loopMezclador;
+        let canvasFantasma, ctxFantasma;
+
+        recordButton.addEventListener('click', async () => {
+            if (!estaGrabando) {
+                try {
+                    const canvasAR = document.querySelector('canvas');
+                    const videoCamaraPersona = document.querySelector('video:not(#miVideo)');
+
+                    if (!videoCamaraPersona) {
+                        alert("Espera a que cargue la cámara por completo.");
+                        return;
+                    }
+
+                    canvasFantasma = document.createElement('canvas');
+                    canvasFantasma.width = canvasAR.clientWidth * window.devicePixelRatio;
+                    canvasFantasma.height = canvasAR.clientHeight * window.devicePixelRatio;
+                    ctxFantasma = canvasFantasma.getContext('2d');
+
+                    const procesarFrame = () => {
+                        if (!estaGrabando) return;
+
+                        // Fondo: Cámara en vivo
+                        ctxFantasma.drawImage(videoCamaraPersona, 0, 0, canvasFantasma.width, canvasFantasma.height);
+                        
+                        // Encima: Elementos AR
+                        ctxFantasma.drawImage(canvasAR, 0, 0, canvasFantasma.width, canvasFantasma.height);
+                        
+                        loopMezclador = requestAnimationFrame(procesarFrame);
+                    };
+
+                    estaGrabando = true;
+                    procesarFrame();
+
+                    const streamVisual = canvasFantasma.captureStream(30);
+                    const pistaVideoCombinada = streamVisual.getVideoTracks()[0];
+
+                    // Captura del flujo de audio estéreo nativo directo del archivo
+                    const streamAudioNativo = video.captureStream ? video.captureStream() : video.mozCaptureStream ? video.mozCaptureStream() : null;
+                    const pistaAudio = streamAudioNativo ? streamAudioNativo.getAudioTracks()[0] : null;
+
+                    const componentesFlujo = [pistaVideoCombinada];
+                    if (pistaAudio) componentesFlujo.push(pistaAudio);
+
+                    const streamFinal = new MediaStream(componentesFlujo);
+
+                    let codecIdeal = 'video/webm;codecs=vp8,opus';
+                    if (!MediaRecorder.isTypeSupported(codecIdeal)) {
+                        codecIdeal = 'video/mp4'; 
+                    }
+
+                    mediaRecorder = new MediaRecorder(streamFinal, { mimeType: codecIdeal });
+                    videoBlobs = [];
+
+                    mediaRecorder.ondataavailable = (e) => {
+                        if (e.data.size > 0) videoBlobs.push(e.data);
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        cancelAnimationFrame(loopMezclador);
+                        const blobFinal = new Blob(videoBlobs, { type: videoBlobs[0].type });
+                        const urlDescarga = URL.createObjectURL(blobFinal);
+                        const enlace = document.createElement('a');
+                        enlace.href = urlDescarga;
+                        
+                        const extension = videoBlobs[0].type.includes('mp4') ? '.mp4' : '.webm';
+                        enlace.download = 'experiencia_AR_completa' + extension;
+                        enlace.click();
+                        
+                        canvasFantasma = null;
+                        ctxFantasma = null;
+                    };
+
+                    mediaRecorder.start();
+                    recordButton.innerText = "⏹️";
+                    recordButton.classList.add('grabando');
+
+                } catch (error) {
+                    console.error(error);
+                    alert("Tu modelo de celular bloquea la grabación unificada por privacidad.");
+                    estaGrabando = false;
+                }
+            } else {
+                estaGrabando = false;
+                mediaRecorder.stop();
+                recordButton.innerText = "🔴";
+                recordButton.classList.remove('grabando');
+            }
+        });
+
+        // Control de la linterna (Flash)
+        let luzEncendida = false;
+        torchButton.addEventListener('click', async () => {
+            try {
+                const sceneEl = document.querySelector('a-scene');
+                const camaraTrack = sceneEl.systems["mindar-image-system"].video.srcObject.getVideoTracks()[0];
+                
+                if (camaraTrack) {
+                    const soporte = camaraTrack.getCapabilities();
+                    if (soporte.torch) {
+                        luzEncendida = !luzEncendida;
+                        await camaraTrack.applyConstraints({ advanced: [{ torch: luzEncendida }] });
+                        torchButton.style.background = luzEncendida ? "rgba(255, 235, 59, 0.5)" : "rgba(0, 0, 0, 0.4)";
+                    } else {
+                        alert("La linterna no está disponible en este lente.");
+                    }
+                }
+            } catch (err) {
+                alert("La linterna requiere despliegue bajo protocolo seguro HTTPS.");
+            }
+        });
+    </script>
+</body>
+</html>
