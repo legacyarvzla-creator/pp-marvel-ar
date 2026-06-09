@@ -36,7 +36,6 @@
 
         // Autorización audio
         document.addEventListener('click', () => { video.play().then(() => video.pause()); }, {once: true});
-
         document.getElementById('franelaTarget').addEventListener("targetFound", () => video.play());
         document.getElementById('franelaTarget').addEventListener("targetLost", () => video.pause());
 
@@ -55,7 +54,11 @@
 
                 const procesarFrame = () => {
                     if (!estaGrabando) return;
-                    // Lógica de ajuste "Cover" para el fondo
+                    
+                    // FORZADO: Mantenemos el video corriendo
+                    if (video.paused) video.play();
+
+                    // Ajuste "Cover" para que el fondo no se deforme
                     const ratioCam = videoCamara.videoWidth / videoCamara.videoHeight;
                     const ratioCanvas = canvasFantasma.width / canvasFantasma.height;
                     let drawW, drawH, drawX, drawY;
@@ -64,12 +67,14 @@
                     } else {
                         drawW = canvasFantasma.width; drawH = drawW / ratioCam; drawX = 0; drawY = (canvasFantasma.height - drawH) / 2;
                     }
+                    
                     ctxFantasma.drawImage(videoCamara, drawX, drawY, drawW, drawH);
                     ctxFantasma.drawImage(canvasAR, 0, 0, canvasFantasma.width, canvasFantasma.height);
                     loopMezclador = requestAnimationFrame(procesarFrame);
                 };
 
                 procesarFrame();
+                
                 const stream = canvasFantasma.captureStream(30);
                 const audioCtx = new AudioContext();
                 const source = audioCtx.createMediaElementSource(video);
@@ -83,4 +88,6 @@
                 mediaRecorder.onstop = () => {
                     cancelAnimationFrame(loopMezclador);
                     const a = document.createElement('a');
-                    a.href = URL.createObjectURL(new Blob(chunks, {
+                    a.href = URL.createObjectURL(new Blob(chunks, { type: 'video/webm' }));
+                    a.download = 'FutbolKids
+
