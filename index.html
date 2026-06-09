@@ -5,62 +5,83 @@
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
-        /* Esto asegura que la escena cubra todo el celular sin barras negras */
-        a-scene { width: 100vw; height: 100vh; display: block; }
-        
-        #ui { position: absolute; z-index: 9999; bottom: 20px; width: 100%; text-align: center; }
-        button { padding: 15px 30px; border-radius: 25px; border: none; background: #e91e63; color: white; font-weight: bold; }
+        body { margin: 0; overflow: hidden; }
+        #ui { position: absolute; z-index: 9999; bottom: 30px; width: 100%; display: flex; justify-content: center; gap: 20px; }
+        button { padding: 15px 30px; border-radius: 50px; border: none; background: #e91e63; color: white; font-weight: bold; cursor: pointer; }
+        #recordBtn.recording { background: #333; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
     </style>
 </head>
 <body>
     <div id="ui">
         <button id="recordBtn">Grabar</button>
+        <button id="lightBtn">Luz</button>
     </div>
 
-    <a-scene 
-        mindar-image="imageTargetSrc: ./targets.mind; autoStart: true;" 
-        color-space="sRGB" 
-        renderer="colorManagement: true" 
-        vr-mode-ui="enabled: false" 
-        device-orientation-permission-ui="enabled: false">
-        
-        <a-assets>
-            <video id="miVideo" src="./video.mp4" loop="true" playsinline webkit-playsinline crossorigin="anonymous"></video>
-        </a-assets>
+    <canvas id="recording-canvas" style="display:none;"></canvas>
 
+    <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: true;" 
+             embedded renderer="preserveDrawingBuffer: true; colorManagement: true" 
+             vr-mode-ui="enabled: false">
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-        
         <a-entity mindar-image-target="targetIndex: 0">
-            <a-video src="#miVideo" width="1" height="1.777" position="0 0 0"></a-video>
+            <a-video id="miVideo" src="./video.mp4" width="1.5" height="2.66" position="0 0 0"></a-video>
             <a-light id="myLight" type="ambient" intensity="1"></a-light>
         </a-entity>
     </a-scene>
 
     <script>
         const video = document.querySelector("#miVideo");
-        const scene = document.querySelector('a-scene');
+        const canvas = document.querySelector("#recording-canvas");
+        const ctx = canvas.getContext('2d');
+        let isRecording = false, chunks = [], recorder;
 
-        scene.addEventListener("targetFound", () => video.play());
-        scene.addEventListener("targetLost", () => video.pause());
+        // Configuración de Audio
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const mixer = audioCtx.createMediaStreamDestination();
+        const videoSource = audioCtx.createMediaElementSource(video);
+        videoSource.connect(mixer);
+        videoSource.connect(audioCtx.destination);
 
-        // Grabación simplificada
         document.querySelector("#recordBtn").addEventListener('click', function() {
-            const canvas = document.querySelector('canvas');
-            const stream = canvas.captureStream(30);
-            const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-            let chunks = [];
-            recorder.ondataavailable = e => chunks.push(e.data);
-            recorder.onstop = () => {
-                const blob = new Blob(chunks, { type: 'video/webm' });
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = 'grabacion_vertical.webm';
-                a.click();
-            };
-            recorder.start();
-            this.innerText = "Deteniendo en 5s...";
-            setTimeout(() => { recorder.stop(); this.innerText = "Grabar"; }, 5000);
+            if (!isRecording) {
+                const aframeCanvas = document.querySelector('a-scene').components.screenshot.getCanvas('perspective');
+                const camera = document.querySelector('video');
+                
+                canvas.width = camera.videoWidth;
+                canvas.height = camera.videoHeight;
+
+                const videoStream = canvas.captureStream(30);
+                const combined = new MediaStream([videoStream.getVideoTracks()[0], ...mixer.stream.getAudioTracks()]);
+                
+                recorder = new MediaRecorder(combined, { mimeType: 'video/webm' });
+                recorder.ondataavailable = e => chunks.push(e.data);
+                recorder.onstop = () => {
+                    const blob = new Blob(chunks, {type: 'video/webm'});
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = 'grabacion_legacy.webm';
+                    a.click();
+                    chunks = [];
+                };
+
+                recorder.start();
+                isRecording = true;
+                this.classList.add('recording');
+                
+                // Bucle de dibujo manual (Evita fondo negro)
+                function render() {
+                    if (!isRecording) return;
+                    ctx.drawImage(camera, 0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(aframeCanvas, 0, 0, canvas.width, canvas.height);
+                    requestAnimationFrame(render);
+                }
+                render();
+            } else {
+                isRecording = false;
+                recorder.stop();
+                this.classList.remove('recording');
+            }
         });
     </script>
 </body>
