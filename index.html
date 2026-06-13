@@ -44,12 +44,12 @@
     <canvas id="recording-canvas"></canvas>
 
     <a-scene mindar-image="imageTargetSrc: ./targets.mind;" 
-             renderer="preserveDrawingBuffer: true; antialias: true; colorManagement: true" 
+             renderer="preserveDrawingBuffer: true; antialias: true; colorManagement: true;" 
              vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
         
         <a-assets>
             <video id="vid" src="video.mp4" preload="auto" loop="true" 
-                   crossorigin="anonymous" playsinline webkit-playsinline></video>
+                   crossorigin="anonymous" playsinline webkit-playsinline muted></video>
         </a-assets>
 
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
@@ -60,7 +60,6 @@
     </a-scene>
 
     <script>
-        // Elementos del DOM
         const btn = document.getElementById("recording-btn");
         const flashBtn = document.getElementById("flash-btn");
         const recordingCanvas = document.getElementById("recording-canvas");
@@ -69,31 +68,28 @@
 
         let mediaRecorder, chunks = [], isRecording = false;
         let audioCtx, mixer, videoSource, micSource;
-        let recordingInterval; // Reemplaza requestAnimationFrame para mantener 30 FPS reales
+        let recordingInterval;
 
-        // Función para detectar el mejor códec soportado por el dispositivo
         function getSupportedMimeType() {
             const types = [
-                'video/webm;codecs=h264', // Excelente rendimiento en Android
-                'video/webm;codecs=vp8',  // Más liviano que VP9
-                'video/mp4;codecs=avc1',  // Formato ideal para iOS/Safari
-                'video/webm'              // Genérico de caída por defecto
+                'video/webm;codecs=h264',
+                'video/webm;codecs=vp8',
+                'video/mp4;codecs=avc1',
+                'video/webm'
             ];
             for (let type of types) {
-                if (MediaRecorder.isTypeSupported(type)) {
-                    return type;
-                }
+                if (MediaRecorder.isTypeSupported(type)) return type;
             }
             return '';
         }
 
-        // Control de la Linterna
+        // Control del Flash
         flashBtn.addEventListener('click', async () => {
             try {
                 const videoCam = document.querySelector("video:not([id])") || document.querySelector("video");
                 const track = videoCam.srcObject.getVideoTracks()[0];
                 const caps = track.getCapabilities();
-                if (!caps.torch) { alert("Flash no disponible."); return; }
+                if (!caps.torch) return;
                 const constraints = track.getConstraints();
                 const active = constraints.advanced && constraints.advanced[0].torch;
                 await track.applyConstraints({ advanced: [{ torch: !active }] });
@@ -101,13 +97,24 @@
             } catch (e) { console.error(e); }
         });
 
-        // Eventos de Target de MindAR
+        // Eventos del Target: Forzamos el desmuteo tras la primera interacción o detección
         const targetEl = document.querySelector("[mindar-image-target]");
-        targetEl.addEventListener('targetFound', () => videoAnim.play());
+        targetEl.addEventListener('targetFound', () => {
+            videoAnim.muted = false; // Desmutea el video para que el usuario lo escuche en vivo
+            videoAnim.play().catch(err => {
+                // Si el navegador bloquea el audio, dejamos que se reproduzca en mutear automático
+                console.log("Audio bloqueado temporalmente por el navegador, esperando click.");
+                videoAnim.muted = true;
+                videoAnim.play();
+            });
+        });
         targetEl.addEventListener('targetLost', () => videoAnim.pause());
 
         // Botón de grabación
         btn.addEventListener('click', async () => {
+            // Desmutear el video obligatoriamente mediante un clic físico real del usuario
+            videoAnim.muted = false;
+            
             if (!isRecording) {
                 await initAudio();
                 startCapture();
@@ -118,16 +125,23 @@
 
         async function initAudio() {
             if (!audioCtx) {
+                // Crear el contexto de audio justo tras el click del usuario
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 mixer = audioCtx.createMediaStreamDestination();
+                
+                // Enrutamiento correcto: Video -> Nodo -> Mezclador de grabación
                 videoSource = audioCtx.createMediaElementSource(videoAnim);
                 videoSource.connect(mixer);
+                
+                // IMPORTANTE: Volver a conectar el video a las cornetas físicas del teléfono, 
+                // de lo contrario, el audio se desvía solo a la grabación y el usuario deja de escucharlo en vivo.
                 videoSource.connect(audioCtx.destination);
+                
                 try {
                     const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
                     micSource = audioCtx.createMediaStreamSource(micStream);
                     micSource.connect(mixer);
-                } catch (e) { console.warn("Micrófono no permitido o no disponible."); }
+                } catch (e) { console.warn("Micrófono no activado."); }
             }
             if (audioCtx.state === 'suspended') await audioCtx.resume();
         }
@@ -136,72 +150,28 @@
             const videoCam = document.querySelector("video:not([id])") || document.querySelector("video");
             const canvasAR = document.querySelector("canvas.a-canvas");
 
-            // Configurar resolución de captura basándose en la cámara interna
             recordingCanvas.width = videoCam.videoWidth || 1280;
             recordingCanvas.height = videoCam.videoHeight || 720;
 
-            // Forzar captura del canvas a 30 FPS estables
             const videoStream = recordingCanvas.captureStream(30);
-            
-            // Combinar Video del Canvas + Audio Mezclado
             const tracks = [...videoStream.getVideoTracks()];
+            
             if (mixer && mixer.stream.getAudioTracks().length > 0) {
                 tracks.push(...mixer.stream.getAudioTracks());
             }
             const combinedStream = new MediaStream(tracks);
 
-            // Selección de códec optimizado y asignación de Bitrate seguro (2.5 Mbps)
-            const mimeType = getSupportedMimeType();
-            const options = {
-                mimeType: mimeType,
-                videoBitsPerSecond: 2500000 // Evita archivos gigantes que traban el reproductor
-            };
-
-            mediaRecorder = new MediaRecorder(combinedStream, options);
+            mediaRecorder = new MediaRecorder(combinedStream, {
+                mimeType: getSupportedMimeType(),
+                videoBitsPerSecond: 2500000
+            });
+            
             mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
             mediaRecorder.onstop = saveVideo;
             
             isRecording = true;
-            mediaRecorder.start(100); // Guardar fragmentos cada 100ms para no saturar memoria
+            mediaRecorder.start(100);
 
-            // Bucle matemático de renderizado fijado exactamente a 30 FPS (1000ms / 30 = ~33.3ms)
             recordingInterval = setInterval(() => {
                 if (!isRecording) return;
-                // Capa 1: Cámara de fondo
-                ctx.drawImage(videoCam, 0, 0, recordingCanvas.width, recordingCanvas.height);
-                // Capa 2: Elementos de Realidad Aumentada
-                ctx.drawImage(canvasAR, 0, 0, recordingCanvas.width, recordingCanvas.height);
-            }, 1000 / 30);
-
-            btn.classList.add('recording');
-        }
-
-        function stopCapture() {
-            isRecording = false;
-            clearInterval(recordingInterval); // Frenamos el bucle inmediatamente
-            mediaRecorder.stop();
-            btn.classList.remove('recording');
-        }
-
-        function saveVideo() {
-            const mimeTypeUsed = mediaRecorder.mimeType;
-            const blob = new Blob(chunks, { type: mimeTypeUsed });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            
-            // Si usa mp4 (iOS) cambia la extensión del archivo descargado
-            const ext = mimeTypeUsed.includes('mp4') ? '.mp4' : '.webm';
-            a.download = `LegacyAR_Messi_${Date.now()}${ext}`;
-            
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => {
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }, 200);
-            chunks = [];
-        }
-    </script>
-</body>
-</html>
+                try {
