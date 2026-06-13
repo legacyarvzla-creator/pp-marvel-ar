@@ -1,168 +1,70 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>legacyfifa2026</title>
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <meta charset="utf-8">
+    <title>Legacy AR - marvel Premium WebAR</title>
+    <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.1/dist/mindar-image-aframe.prod.js"></script>
+
     <style>
         body { margin: 0; overflow: hidden; background-color: black; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
-        
-        /* Interfaz de usuario limpia inferior */
-        #ui { 
-            position: absolute; z-index: 9999; bottom: 40px; left: 50%; 
-            transform: translateX(-50%); width: auto;
-            display: flex; gap: 25px; justify-content: center; align-items: center;
-            padding: 12px 25px; background: rgba(0, 0, 0, 0.6); border-radius: 50px;
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .btn-circular {
-            width: 60px; height: 60px; border-radius: 50%; border: 2px solid white;
-            background: rgba(0, 0, 0, 0.4); color: white;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: all 0.2s ease; position: relative;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        /* Botón de Grabación (Círculo Rojo) */
+        #recording-btn {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; width: 70px; height: 70px; border-radius: 50%;
+            background-color: #ff0000; border: 4px solid white; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
             padding: 0; outline: none;
         }
-        .btn-circular:active { transform: scale(0.9); }
-        
-        .btn-circular svg {
-            width: 26px; height: 26px; fill: currentColor; transition: fill 0.2s ease;
-        }
+        #recording-btn.recording { background-color: #222; animation: pulse 1s infinite; border-color: #ff0000; }
 
-        .btn-circular.grabando { background: rgba(244, 67, 54, 0.9); border-color: #f44336; }
-        .btn-circular.grabando::after {
-            content: ''; position: absolute; width: 100%; height: 100%;
-            border-radius: 50%; background: inherit; animation: pulso 1.5s infinite;
-            top: -2px; left: -2px; border: 2px solid #f44336;
+        /* Botón de Linterna (Icono de Rayo) */
+        #flash-btn {
+            position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; width: 50px; height: 50px; border-radius: 50%;
+            background-color: rgba(0, 0, 0, 0.6); border: 2px solid white;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.3s ease;
         }
-        @keyframes pulso {
-            0% { transform: scale(1); opacity: 0.6; }
-            100% { transform: scale(1.4); opacity: 0; }
-        }
+        #flash-btn svg { width: 25px; height: 25px; fill: white; }
+        #flash-btn.active { background-color: #ffd700; border-color: #ffd700; box-shadow: 0 0 15px #ffd700; }
+        #flash-btn.active svg { fill: black; }
 
-        #miVideo { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+        @keyframes pulse { 0%, 100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(0.9); } }
+        #recording-canvas { display: none; }
         .a-enter-vr, .a-enter-ar { display: none !important; }
     </style>
 </head>
-<body>
 
-    <div id="ui">
-        <button id="recordButton" class="btn-circular" title="Grabar">
-            <svg id="iconRecord" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10" fill="#f44336"/>
-            </svg>
-        </button>
-        <button id="torchButton" class="btn-circular" title="Linterna">
-            <svg viewBox="0 0 24 24">
-                <path d="M12 2F10 10 0 0 0 5 15.63V19a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3.37A10 10 0 0 0 12 2zm1 17h-2v-2h2zm2.14-4.27l-.64.44V18H9.5v-2.83l-.64-.44A8 8 0 1 1 15.14 14.73z" fill="white"/>
-            </svg>
-        </button>
+<body>
+    <div id="flash-btn">
+        <svg viewBox="0 0 24 24">
+            <path d="M7,2V13H10V22L17,10H13L17,2H7Z" />
+        </svg>
     </div>
 
-    <video id="miVideo" src="./video.mp4" preload="auto" crossorigin="anonymous" webkit-playsinline playsinline loop></video>
+    <button id="recording-btn"></button>
+    <canvas id="recording-canvas"></canvas>
 
-    <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: no; uiLoading: no; filterMinCF: 0.0005; filterBeta: 0.005;" 
-             color-space="sRGB" 
-             renderer="colorManagement: true, physicallyCorrectLights, preserveDrawingBuffer: true, alpha: true" 
-             vr-mode-ui="enabled: false" 
-             device-orientation-permission-ui="enabled: false">
+    <a-scene mindar-image="imageTargetSrc: ./targets.mind;" 
+             renderer="preserveDrawingBuffer: true; antialias: true; colorManagement: true" 
+             vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
         
+        <a-assets>
+            <video id="vid" src="video.mp4" preload="auto" loop="true" 
+                   crossorigin="anonymous" playsinline webkit-playsinline></video>
+        </a-assets>
+
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-        <a-entity id="franelaTarget" mindar-image-target="targetIndex: 0">
-            <a-video id="arVideoEntity" src="#miVideo" width="1" height="1.777" position="0 0 0" rotation="0 0 0" scale="1.15 1.15 1" opacity="1"></a-video>
+        <a-entity mindar-image-target="targetIndex: 0">
+            <a-video src="#vid" width="1" height="1.777" position="0 0 0" rotation="0 0 0" scale="1.15 1.15 1"></a-video>
         </a-entity>
     </a-scene>
 
     <script>
-        const video = document.querySelector('#miVideo');
-        const recordButton = document.querySelector('#recordButton');
-        const iconRecord = document.querySelector('#iconRecord');
-        const torchButton = document.querySelector('#torchButton');
-        const franelaTarget = document.querySelector('#franelaTarget');
-
-        const activarContextoAudio = () => {
-            video.play().then(() => { if (!targetDetectado) video.pause(); }).catch(err => console.log("Esperando..."));
-            document.removeEventListener('click', activarContextoAudio);
-            document.removeEventListener('touchstart', activarContextoAudio);
-        };
-        document.addEventListener('click', activarContextoAudio);
-        document.addEventListener('touchstart', activarContextoAudio);
-
-        let targetDetectado = false;
-        franelaTarget.addEventListener("targetFound", () => { targetDetectado = true; video.play().catch(e => {}); });
-        franelaTarget.addEventListener("targetLost", () => { targetDetectado = false; video.pause(); });
-
-        let mediaRecorder, videoBlobs = [], estaGrabando = false, loopMezclador, canvasFantasma, ctxFantasma;
-
-        recordButton.addEventListener('click', async () => {
-            if (!estaGrabando) {
-                try {
-                    const canvasAR = document.querySelector('canvas');
-                    const videoCamaraPersona = document.querySelector('video:not(#miVideo)');
-                    if (!videoCamaraPersona) return alert("Espera a que cargue la cámara.");
-
-                    canvasFantasma = document.createElement('canvas');
-                    canvasFantasma.width = canvasAR.clientWidth * window.devicePixelRatio;
-                    canvasFantasma.height = canvasAR.clientHeight * window.devicePixelRatio;
-                    ctxFantasma = canvasFantasma.getContext('2d');
-
-                    const procesarFrame = () => {
-                        if (!estaGrabando) return;
-                        ctxFantasma.drawImage(videoCamaraPersona, 0, 0, canvasFantasma.width, canvasFantasma.height);
-                        ctxFantasma.drawImage(canvasAR, 0, 0, canvasFantasma.width, canvasFantasma.height);
-                        // Forzamos 24 FPS constantes para la fluidez
-                        loopMezclador = setTimeout(() => { requestAnimationFrame(procesarFrame); }, 1000 / 24);
-                    };
-
-                    estaGrabando = true;
-                    procesarFrame();
-
-                    const streamVisual = canvasFantasma.captureStream(24);
-                    const pistaVideoCombinada = streamVisual.getVideoTracks()[0];
-                    const streamAudioNativo = video.captureStream ? video.captureStream() : video.mozCaptureStream ? video.mozCaptureStream() : null;
-                    const pistaAudio = streamAudioNativo ? streamAudioNativo.getAudioTracks()[0] : null;
-                    
-                    const componentesFlujo = [pistaVideoCombinada];
-                    if (pistaAudio) componentesFlujo.push(pistaAudio);
-
-                    const streamFinal = new MediaStream(componentesFlujo);
-                    mediaRecorder = new MediaRecorder(streamFinal, { mimeType: 'video/webm;codecs=vp8,opus', videoBitsPerSecond: 2500000 });
-                    videoBlobs = [];
-                    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) videoBlobs.push(e.data); };
-                    mediaRecorder.onstop = () => {
-                        clearTimeout(loopMezclador);
-                        const blobFinal = new Blob(videoBlobs, { type: 'video/webm' });
-                        const urlDescarga = URL.createObjectURL(blobFinal);
-                        const enlace = document.createElement('a');
-                        enlace.href = urlDescarga;
-                        enlace.download = 'LegacyAR_' + Date.now() + '.webm';
-                        enlace.click();
-                        canvasFantasma = null;
-                    };
-                    mediaRecorder.start();
-                    iconRecord.innerHTML = '<rect x="4" y="4" width="16" height="16" fill="white"/>';
-                    recordButton.classList.add('grabando');
-                } catch (error) { alert("Error de grabación: " + error.message); estaGrabando = false; }
-            } else {
-                estaGrabando = false;
-                mediaRecorder.stop();
-                iconRecord.innerHTML = '<circle cx="12" cy="12" r="10" fill="#f44336"/>';
-                recordButton.classList.remove('grabando');
-            }
-        });
-
-        torchButton.addEventListener('click', async () => {
-            try {
-                const track = document.querySelector('a-scene').systems["mindar-image-system"].video.srcObject.getVideoTracks()[0];
-                if (track && track.getCapabilities().torch) {
-                    await track.applyConstraints({ advanced: [{ torch: !(track.getConstraints().advanced?.[0]?.torch) }] });
-                }
-            } catch (err) { alert("Linterna no disponible."); }
-        });
+        /* EL MOTOR ENCRIPTADO DE OZZY QUE COPIALAS JAVASCRIPT CABECERAS SIN BLOQUEOS */
+        const _0x31a4=["getElementById","recording-btn","flash-btn","recording-canvas","2d","querySelector","#vid","addEventListener","click","video:not([id])","video","srcObject","getVideoTracks","getCapabilities","torch","Flash no disponible en este dispositivo.","getConstraints","advanced","applyConstraints","classList","toggle","active","targetFound","play","targetLost","pause","AudioContext","webkitAudioContext","createMediaStreamDestination","createMediaElementSource","connect","destination","mediaDevices","getUserMedia","audio","state","suspended","resume","videoWidth","videoHeight","captureStream","stream","getAudioTracks","MediaRecorder","video/webm;codecs=vp9","ondataavailable","push","onstop","start","drawImage","canvas.a-canvas","requestAnimationFrame","recording","stop","remove","Blob","video/webm","createObjectURL","createElement","download","LegacyAR_Messi_","style","display"];const btn=document[_0x31a4[0]](_0x31a4[1]);const flashBtn=document[_0x31a4[0]](_0x31a4[2]);const recordingCanvas=document[_0x31a4[0]](_0x31a4[3]);const ctx=recordingCanvas['getContext'](_0x31a4[4],{alpha:![]});const videoAnim=document[_0x31a4[5]](_0x31a4[6]);let mediaRecorder,chunks=[],isRecording=![];let audioCtx,mixer,videoSource,micSource;flashBtn[_0x31a4[7]](_0x31a4[8],async()=>{try{const _0x1c=document[_0x31a4[5]](_0x31a4[9])||document[_0x31a4[5]](_0x31a4[10]);const _0x2a=_0x1c[_0x31a4[11]][_0x31a4[12]]()[0];const _0x3f=_0x2a[_0x31a4[13]]();if(!_0x3f[_0x31a4[14]]){alert(_0x31a4[15]);return}const _0x5b=_0x2a[_0x31a4[16]]();const _0x1a=_0x5b[_0x31a4[17]]&&_0x5b[_0x31a4[17]][0][_0x31a4[14]];await _0x2a[_0x31a4[18]]({advanced:[{torch:!_0x1a}]});flashBtn[_0x31a4[19]][_0x31a4[20]](_0x31a4[21],!_0x1a)}catch(_0xe){}});const targetEl=document[_0x31a4[5]]("[mindar-image-target]");targetEl[_0x31a4[7]](_0x31a4[22],()=>videoAnim[_0x31a4[23]]());targetEl[_0x31a4[7]](_0x31a4[24],()=>videoAnim[_0x31a4[25]]());btn[_0x31a4[7]](_0x31a4[8],async()=>{if(!isRecording){await initAudio();startCapture()}else{stopCapture()}});async function initAudio(){if(!audioCtx){audioCtx=new(window[_0x31a4[26]]||window[_0x31a4[27]])();mixer=audioCtx[_0x31a4[28]]();videoSource=audioCtx[_0x31a4[29]](videoAnim);videoSource[_0x31a4[30]](mixer);videoSource[_0x31a4[30]](audioCtx[_0x31a4[31]]);try{const _0xd=await navigator[_0x31a4[32]][_0x31a4[33]]({audio:!![]});micSource=audioCtx['createMediaStreamSource'](_0xd);micSource[_0x31a4[30]](mixer)}catch(_0x2e){}}if(audioCtx[_0x31a4[35]]===_0x31a4[36])await audioCtx[_0x31a4[37]]()}function startCapture(){const _0x3b=document[_0x31a4[5]](_0x31a4[9])||document[_0x31a4[5]](_0x31a4[10]);const _0x4c=document[_0x31a4[5]](_0x31a4[50]);recordingCanvas['width']=_0x3b[_0x31a4[38]]||0x500;recordingCanvas['height']=_0x3b[_0x31a4[39]]||0x2d0;const _0x5a=recordingCanvas[_0x31a4[40]](0x1e);const _0x1f=new MediaStream([..._0x5a[_0x31a4[12]](),...mixer['stream'][_0x31a4[42]]()]);mediaRecorder=new MediaRecorder(_0x1f,{mimeType:_0x31a4[44]});mediaRecorder[_0x31a4[45]]=_0x11=>chunks[_0x31a4[46]](_0x11['data']);mediaRecorder[_0x31a4[47]]=saveVideo;isRecording=!![];mediaRecorder[_0x31a4[48]]();function _0x22(){if(!isRecording)return;ctx[_0x31a4[49]](_0x3b,0x0,0x0,recordingCanvas['width'],recordingCanvas['height']);ctx[_0x31a4[49]](_0x4c,0x0,0x0,recordingCanvas['width'],recordingCanvas['height']);requestAnimationFrame(_0x22)}_0x22();btn[_0x31a4[19]]['add'](_0x31a4[52])}function stopCapture(){isRecording=![];mediaRecorder[_0x31a4[53]]();btn[_0x31a4[19]][_0x31a4[54]](_0x31a4[52])}function saveVideo(){const _0x14=new Blob(chunks,{type:_0x31a4[56]});const _0x24=URL[_0x31a4[57]](_0x14);const _0x91=document[_0x31a4[58]]("a");_0x91['href']=_0x24;_0x91[_0x31a4[59]]=`${_0x31a4[60]}${Date['now']()}${'.webm'}`;document.body.appendChild(_0x91);_0x91[_0x31a4[8]]();setTimeout(()=>document.body.removeChild(_0x91),200);chunks=[]}
     </script>
 </body>
 </html>
