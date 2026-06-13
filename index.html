@@ -8,17 +8,14 @@
 
     <style>
         body { margin: 0; overflow: hidden; background-color: black; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
-        /* Botón de Grabación (Círculo Rojo) */
         #recording-btn {
             position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
             z-index: 1000; width: 70px; height: 70px; border-radius: 50%;
             background-color: #ff0000; border: 4px solid white; cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-            padding: 0; outline: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4); padding: 0; outline: none;
         }
         #recording-btn.recording { background-color: #222; animation: pulse 1s infinite; border-color: #ff0000; }
 
-        /* Botón de Linterna (Icono de Rayo) */
         #flash-btn {
             position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%);
             z-index: 1000; width: 50px; height: 50px; border-radius: 50%;
@@ -63,8 +60,148 @@
     </a-scene>
 
     <script>
-        /* EL MOTOR ENCRIPTADO DE OZZY QUE COPIALAS JAVASCRIPT CABECERAS SIN BLOQUEOS */
-        const _0x31a4=["getElementById","recording-btn","flash-btn","recording-canvas","2d","querySelector","#vid","addEventListener","click","video:not([id])","video","srcObject","getVideoTracks","getCapabilities","torch","Flash no disponible en este dispositivo.","getConstraints","advanced","applyConstraints","classList","toggle","active","targetFound","play","targetLost","pause","AudioContext","webkitAudioContext","createMediaStreamDestination","createMediaElementSource","connect","destination","mediaDevices","getUserMedia","audio","state","suspended","resume","videoWidth","videoHeight","captureStream","stream","getAudioTracks","MediaRecorder","video/webm;codecs=vp9","ondataavailable","push","onstop","start","drawImage","canvas.a-canvas","requestAnimationFrame","recording","stop","remove","Blob","video/webm","createObjectURL","createElement","download","LegacyAR_Messi_","style","display"];const btn=document[_0x31a4[0]](_0x31a4[1]);const flashBtn=document[_0x31a4[0]](_0x31a4[2]);const recordingCanvas=document[_0x31a4[0]](_0x31a4[3]);const ctx=recordingCanvas['getContext'](_0x31a4[4],{alpha:![]});const videoAnim=document[_0x31a4[5]](_0x31a4[6]);let mediaRecorder,chunks=[],isRecording=![];let audioCtx,mixer,videoSource,micSource;flashBtn[_0x31a4[7]](_0x31a4[8],async()=>{try{const _0x1c=document[_0x31a4[5]](_0x31a4[9])||document[_0x31a4[5]](_0x31a4[10]);const _0x2a=_0x1c[_0x31a4[11]][_0x31a4[12]]()[0];const _0x3f=_0x2a[_0x31a4[13]]();if(!_0x3f[_0x31a4[14]]){alert(_0x31a4[15]);return}const _0x5b=_0x2a[_0x31a4[16]]();const _0x1a=_0x5b[_0x31a4[17]]&&_0x5b[_0x31a4[17]][0][_0x31a4[14]];await _0x2a[_0x31a4[18]]({advanced:[{torch:!_0x1a}]});flashBtn[_0x31a4[19]][_0x31a4[20]](_0x31a4[21],!_0x1a)}catch(_0xe){}});const targetEl=document[_0x31a4[5]]("[mindar-image-target]");targetEl[_0x31a4[7]](_0x31a4[22],()=>videoAnim[_0x31a4[23]]());targetEl[_0x31a4[7]](_0x31a4[24],()=>videoAnim[_0x31a4[25]]());btn[_0x31a4[7]](_0x31a4[8],async()=>{if(!isRecording){await initAudio();startCapture()}else{stopCapture()}});async function initAudio(){if(!audioCtx){audioCtx=new(window[_0x31a4[26]]||window[_0x31a4[27]])();mixer=audioCtx[_0x31a4[28]]();videoSource=audioCtx[_0x31a4[29]](videoAnim);videoSource[_0x31a4[30]](mixer);videoSource[_0x31a4[30]](audioCtx[_0x31a4[31]]);try{const _0xd=await navigator[_0x31a4[32]][_0x31a4[33]]({audio:!![]});micSource=audioCtx['createMediaStreamSource'](_0xd);micSource[_0x31a4[30]](mixer)}catch(_0x2e){}}if(audioCtx[_0x31a4[35]]===_0x31a4[36])await audioCtx[_0x31a4[37]]()}function startCapture(){const _0x3b=document[_0x31a4[5]](_0x31a4[9])||document[_0x31a4[5]](_0x31a4[10]);const _0x4c=document[_0x31a4[5]](_0x31a4[50]);recordingCanvas['width']=_0x3b[_0x31a4[38]]||0x500;recordingCanvas['height']=_0x3b[_0x31a4[39]]||0x2d0;const _0x5a=recordingCanvas[_0x31a4[40]](0x1e);const _0x1f=new MediaStream([..._0x5a[_0x31a4[12]](),...mixer['stream'][_0x31a4[42]]()]);mediaRecorder=new MediaRecorder(_0x1f,{mimeType:_0x31a4[44]});mediaRecorder[_0x31a4[45]]=_0x11=>chunks[_0x31a4[46]](_0x11['data']);mediaRecorder[_0x31a4[47]]=saveVideo;isRecording=!![];mediaRecorder[_0x31a4[48]]();function _0x22(){if(!isRecording)return;ctx[_0x31a4[49]](_0x3b,0x0,0x0,recordingCanvas['width'],recordingCanvas['height']);ctx[_0x31a4[49]](_0x4c,0x0,0x0,recordingCanvas['width'],recordingCanvas['height']);requestAnimationFrame(_0x22)}_0x22();btn[_0x31a4[19]]['add'](_0x31a4[52])}function stopCapture(){isRecording=![];mediaRecorder[_0x31a4[53]]();btn[_0x31a4[19]][_0x31a4[54]](_0x31a4[52])}function saveVideo(){const _0x14=new Blob(chunks,{type:_0x31a4[56]});const _0x24=URL[_0x31a4[57]](_0x14);const _0x91=document[_0x31a4[58]]("a");_0x91['href']=_0x24;_0x91[_0x31a4[59]]=`${_0x31a4[60]}${Date['now']()}${'.webm'}`;document.body.appendChild(_0x91);_0x91[_0x31a4[8]]();setTimeout(()=>document.body.removeChild(_0x91),200);chunks=[]}
+        // Elementos del DOM
+        const btn = document.getElementById("recording-btn");
+        const flashBtn = document.getElementById("flash-btn");
+        const recordingCanvas = document.getElementById("recording-canvas");
+        const ctx = recordingCanvas.getContext('2d', { alpha: false });
+        const videoAnim = document.querySelector("#vid");
+
+        let mediaRecorder, chunks = [], isRecording = false;
+        let audioCtx, mixer, videoSource, micSource;
+        let recordingInterval; // Reemplaza requestAnimationFrame para mantener 30 FPS reales
+
+        // Función para detectar el mejor códec soportado por el dispositivo
+        function getSupportedMimeType() {
+            const types = [
+                'video/webm;codecs=h264', // Excelente rendimiento en Android
+                'video/webm;codecs=vp8',  // Más liviano que VP9
+                'video/mp4;codecs=avc1',  // Formato ideal para iOS/Safari
+                'video/webm'              // Genérico de caída por defecto
+            ];
+            for (let type of types) {
+                if (MediaRecorder.isTypeSupported(type)) {
+                    return type;
+                }
+            }
+            return '';
+        }
+
+        // Control de la Linterna
+        flashBtn.addEventListener('click', async () => {
+            try {
+                const videoCam = document.querySelector("video:not([id])") || document.querySelector("video");
+                const track = videoCam.srcObject.getVideoTracks()[0];
+                const caps = track.getCapabilities();
+                if (!caps.torch) { alert("Flash no disponible."); return; }
+                const constraints = track.getConstraints();
+                const active = constraints.advanced && constraints.advanced[0].torch;
+                await track.applyConstraints({ advanced: [{ torch: !active }] });
+                flashBtn.classList.toggle('active', !active);
+            } catch (e) { console.error(e); }
+        });
+
+        // Eventos de Target de MindAR
+        const targetEl = document.querySelector("[mindar-image-target]");
+        targetEl.addEventListener('targetFound', () => videoAnim.play());
+        targetEl.addEventListener('targetLost', () => videoAnim.pause());
+
+        // Botón de grabación
+        btn.addEventListener('click', async () => {
+            if (!isRecording) {
+                await initAudio();
+                startCapture();
+            } else {
+                stopCapture();
+            }
+        });
+
+        async function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                mixer = audioCtx.createMediaStreamDestination();
+                videoSource = audioCtx.createMediaElementSource(videoAnim);
+                videoSource.connect(mixer);
+                videoSource.connect(audioCtx.destination);
+                try {
+                    const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    micSource = audioCtx.createMediaStreamSource(micStream);
+                    micSource.connect(mixer);
+                } catch (e) { console.warn("Micrófono no permitido o no disponible."); }
+            }
+            if (audioCtx.state === 'suspended') await audioCtx.resume();
+        }
+
+        function startCapture() {
+            const videoCam = document.querySelector("video:not([id])") || document.querySelector("video");
+            const canvasAR = document.querySelector("canvas.a-canvas");
+
+            // Configurar resolución de captura basándose en la cámara interna
+            recordingCanvas.width = videoCam.videoWidth || 1280;
+            recordingCanvas.height = videoCam.videoHeight || 720;
+
+            // Forzar captura del canvas a 30 FPS estables
+            const videoStream = recordingCanvas.captureStream(30);
+            
+            // Combinar Video del Canvas + Audio Mezclado
+            const tracks = [...videoStream.getVideoTracks()];
+            if (mixer && mixer.stream.getAudioTracks().length > 0) {
+                tracks.push(...mixer.stream.getAudioTracks());
+            }
+            const combinedStream = new MediaStream(tracks);
+
+            // Selección de códec optimizado y asignación de Bitrate seguro (2.5 Mbps)
+            const mimeType = getSupportedMimeType();
+            const options = {
+                mimeType: mimeType,
+                videoBitsPerSecond: 2500000 // Evita archivos gigantes que traban el reproductor
+            };
+
+            mediaRecorder = new MediaRecorder(combinedStream, options);
+            mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+            mediaRecorder.onstop = saveVideo;
+            
+            isRecording = true;
+            mediaRecorder.start(100); // Guardar fragmentos cada 100ms para no saturar memoria
+
+            // Bucle matemático de renderizado fijado exactamente a 30 FPS (1000ms / 30 = ~33.3ms)
+            recordingInterval = setInterval(() => {
+                if (!isRecording) return;
+                // Capa 1: Cámara de fondo
+                ctx.drawImage(videoCam, 0, 0, recordingCanvas.width, recordingCanvas.height);
+                // Capa 2: Elementos de Realidad Aumentada
+                ctx.drawImage(canvasAR, 0, 0, recordingCanvas.width, recordingCanvas.height);
+            }, 1000 / 30);
+
+            btn.classList.add('recording');
+        }
+
+        function stopCapture() {
+            isRecording = false;
+            clearInterval(recordingInterval); // Frenamos el bucle inmediatamente
+            mediaRecorder.stop();
+            btn.classList.remove('recording');
+        }
+
+        function saveVideo() {
+            const mimeTypeUsed = mediaRecorder.mimeType;
+            const blob = new Blob(chunks, { type: mimeTypeUsed });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            
+            // Si usa mp4 (iOS) cambia la extensión del archivo descargado
+            const ext = mimeTypeUsed.includes('mp4') ? '.mp4' : '.webm';
+            a.download = `LegacyAR_Messi_${Date.now()}${ext}`;
+            
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 200);
+            chunks = [];
+        }
     </script>
 </body>
 </html>
